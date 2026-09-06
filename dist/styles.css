@@ -145,6 +145,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--yellow); outlin
 .brief { max-width: 470px; }
 
 .task-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; }
+.task-heading > div:first-child { min-width: 0; flex: 1; }
 .task-type { margin: 0 0 10px; color: var(--yellow); font-size: .78rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
 
 h1, h2 {
@@ -155,7 +156,7 @@ h1, h2 {
   line-height: 1.03;
 }
 
-h1 { max-width: 100%; font-size: clamp(2.4rem, 4.8vw, 5.3rem); text-wrap: balance; overflow-wrap: anywhere; }
+h1 { width: 100%; max-width: 100%; font-size: clamp(2.4rem, 4.8vw, 5.3rem); text-wrap: balance; overflow-wrap: normal; word-break: normal; hyphens: none; }
 h1.is-medium { font-size: clamp(1.9rem, 3.5vw, 3.8rem); letter-spacing: -.055em; }
 h1.is-long { font-size: clamp(1.55rem, 2.7vw, 3rem); letter-spacing: -.06em; }
 h2 { font-size: clamp(2.2rem, 5vw, 4.5rem); }
@@ -315,24 +316,19 @@ kbd { border: 1px solid var(--line); border-bottom-color: #4a4a50; border-radius
 .guide-demo { margin: 22px 0 16px; overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: #09090b; }
 .guide-demo__screen { display: block; width: 100%; height: auto; }
 .demo-button { fill: #242429; stroke: #3d3d44; stroke-width: 1; }
-.demo-button--hint { fill: var(--yellow); stroke: var(--yellow); animation: demoHintPress 8s linear infinite; }
-.demo-button--break { animation: demoBreakPress 8s linear infinite; }
+.demo-button--hint { fill: var(--yellow); stroke: var(--yellow); }
+.demo-button.is-demo-pressed { filter: brightness(1.2); }
 .demo-button-label { fill: var(--text); font: 800 14px "Manrope Local", sans-serif; }
 .demo-button-label--dark { fill: var(--yellow-ink); }
-.demo-edge { stroke: var(--yellow); stroke-width: 5; stroke-linecap: round; stroke-dasharray: 190; stroke-dashoffset: 190; filter: drop-shadow(0 0 6px rgba(255, 211, 26, .35)); animation: demoEdge 8s linear infinite; }
-.demo-star { fill: #626268; stroke: #8c8c92; stroke-width: 2; animation: demoStar 8s linear infinite; }
-.demo-star--1 { animation-name: demoStar1; } .demo-edge--1 { animation-name: demoEdge1; }
-.demo-star--2 { animation-name: demoStar2; } .demo-edge--2 { animation-name: demoEdge2; }
-.demo-star--3 { animation-name: demoStar3; } .demo-edge--3 { animation-name: demoEdge3; }
-.demo-star--4 { animation-name: demoStar4; } .demo-edge--4 { animation-name: demoEdge4; }
-.demo-star--5 { animation-name: demoStar5; } .demo-edge--5 { animation-name: demoEdge5; }
-.demo-star--6 { animation-name: demoStar6; } .demo-edge--6 { animation-name: demoEdge6; }
-.demo-star--7 { animation-name: demoStar7; } .demo-edge--7 { animation-name: demoEdge7; }
-.demo-cursor { transform-box: view-box; transform-origin: 0 0; animation: demoCursorPath 8s var(--ease-in-out) infinite; }
+.demo-edge { opacity: 0; stroke: var(--yellow); stroke-width: 5; stroke-linecap: round; stroke-dasharray: 190; stroke-dashoffset: 190; filter: drop-shadow(0 0 6px rgba(255, 211, 26, .35)); transition: opacity 180ms var(--ease-out), stroke-dashoffset 420ms var(--ease-out); }
+.demo-edge.is-visible { opacity: 1; stroke-dashoffset: 0; }
+.demo-star { opacity: 0; fill: var(--success); stroke: var(--success); stroke-width: 2; transform-box: fill-box; transform-origin: center; transform: scale(.94); transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out); }
+.demo-star.is-visible { opacity: 1; transform: scale(1); }
+.demo-cursor { transform-box: view-box; transform-origin: 0 0; transition: transform 500ms var(--ease-in-out); }
 .demo-cursor path { fill: #fff; stroke: #09090b; stroke-width: 2.5; stroke-linejoin: round; filter: drop-shadow(0 3px 6px rgba(0,0,0,.65)); }
-.demo-cursor circle { fill: none; stroke: var(--success); stroke-width: 3; opacity: 0; transform-origin: center; animation: demoCursorClick 8s linear infinite; }
+.demo-cursor circle { fill: none; stroke: var(--success); stroke-width: 3; opacity: 0; transform-origin: center; }
+.demo-cursor.is-clicking circle { animation: demoCursorClick 320ms var(--ease-out); }
 .demo-loop-label { display: block; padding: 8px 12px 10px; color: #77777d; font-size: .65rem; text-align: center; letter-spacing: .06em; text-transform: uppercase; }
-.guide-dialog:not([open]) .demo-button, .guide-dialog:not([open]) .demo-edge, .guide-dialog:not([open]) .demo-star, .guide-dialog:not([open]) .demo-cursor, .guide-dialog:not([open]) .demo-cursor circle { animation-name: none; }
 
 @keyframes lineIn { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 @keyframes answerIn { from { opacity: 0; } to { opacity: .58; } }
@@ -343,36 +339,7 @@ kbd { border: 1px solid var(--line); border-bottom-color: #4a4a50; border-radius
 @keyframes phaseIn { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @keyframes fadeIn { from { opacity: 0; } }
 @keyframes resultIn { from { opacity: 0; transform: translateY(24px) scale(.97); filter: blur(8px); } }
-@keyframes demoStar1 { 0%, 7% { fill:#626268;stroke:#8c8c92 } 10%, 96% { fill:var(--success);stroke:var(--success) } 100% { fill:#626268;stroke:#8c8c92 } }
-@keyframes demoStar2 { 0%, 20% { fill:#626268;stroke:#8c8c92 } 23%, 96% { fill:var(--success);stroke:var(--success) } 100% { fill:#626268;stroke:#8c8c92 } }
-@keyframes demoStar3 { 0%, 37% { fill:#626268;stroke:#8c8c92 } 40%, 96% { fill:var(--success);stroke:var(--success) } 100% { fill:#626268;stroke:#8c8c92 } }
-@keyframes demoStar4 { 0%, 52% { fill:#626268;stroke:#8c8c92 } 55%, 96% { fill:var(--success);stroke:var(--success) } 100% { fill:#626268;stroke:#8c8c92 } }
-@keyframes demoStar5 { 0%, 68% { fill:#626268;stroke:#8c8c92 } 71%, 96% { fill:var(--success);stroke:var(--success) } 100% { fill:#626268;stroke:#8c8c92 } }
-@keyframes demoStar6 { 0%, 80% { fill:#626268;stroke:#8c8c92 } 83%, 96% { fill:var(--success);stroke:var(--success) } 100% { fill:#626268;stroke:#8c8c92 } }
-@keyframes demoStar7 { 0%, 88% { fill:#626268;stroke:#8c8c92 } 91%, 96% { fill:var(--success);stroke:var(--success) } 100% { fill:#626268;stroke:#8c8c92 } }
-@keyframes demoEdge1 { 0%, 20% { stroke-dashoffset:190 } 25%, 96% { stroke-dashoffset:0 } 100% { stroke-dashoffset:190 } }
-@keyframes demoEdge2 { 0%, 37% { stroke-dashoffset:190 } 42%, 96% { stroke-dashoffset:0 } 100% { stroke-dashoffset:190 } }
-@keyframes demoEdge3 { 0%, 52% { stroke-dashoffset:190 } 57%, 96% { stroke-dashoffset:0 } 100% { stroke-dashoffset:190 } }
-@keyframes demoEdge4 { 0%, 68% { stroke-dashoffset:190 } 73%, 96% { stroke-dashoffset:0 } 100% { stroke-dashoffset:190 } }
-@keyframes demoEdge5 { 0%, 80% { stroke-dashoffset:190 } 84%, 96% { stroke-dashoffset:0 } 100% { stroke-dashoffset:190 } }
-@keyframes demoEdge6 { 0%, 88% { stroke-dashoffset:190 } 92%, 96% { stroke-dashoffset:0 } 100% { stroke-dashoffset:190 } }
-@keyframes demoEdge7 { 0%, 91% { stroke-dashoffset:190 } 95%, 96% { stroke-dashoffset:0 } 100% { stroke-dashoffset:190 } }
-@keyframes demoHintPress { 0%, 7%, 18%, 27%, 38%, 47%, 78%, 87%, 100% { filter: none; } 10%, 21%, 30%, 41%, 50%, 81% { filter: brightness(1.18); } }
-@keyframes demoBreakPress { 0%, 56%, 65%, 100% { fill: #242429; } 59%, 62% { fill: #4a4020; } }
-@keyframes demoCursorPath {
-  0%, 7% { transform: translate(116px, 22px); }
-  12%, 16% { transform: translate(48px, 136px); }
-  20%, 24% { transform: translate(116px, 22px); }
-  29%, 34% { transform: translate(122px, 153px); }
-  39%, 43% { transform: translate(116px, 22px); }
-  48%, 53% { transform: translate(198px, 189px); }
-  58%, 63% { transform: translate(394px, 22px); }
-  68%, 73% { transform: translate(290px, 190px); }
-  79%, 83% { transform: translate(116px, 22px); }
-  89%, 94% { transform: translate(402px, 264px); }
-  100% { transform: translate(116px, 22px); }
-}
-@keyframes demoCursorClick { 0%, 6%, 9%, 19%, 22%, 38%, 41%, 57%, 60%, 78%, 81%, 100% { opacity: 0; transform: scale(.92); } 7%, 20%, 39%, 58%, 79% { opacity: .9; transform: scale(1.12); } }
+@keyframes demoCursorClick { from { opacity: .9; transform: scale(.72); } to { opacity: 0; transform: scale(1.35); } }
 
 @media (max-width: 1040px) {
   .workspace { grid-template-columns: 1fr; align-items: start; }
@@ -447,6 +414,6 @@ kbd { border: 1px solid var(--line); border-bottom-color: #4a4a50; border-radius
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
   .demo-cursor { display: none; }
-  .demo-star { fill: var(--success); stroke: var(--success); }
-  .demo-edge { stroke-dashoffset: 0; }
+  .demo-star.is-visible { opacity: 1; transform: none; }
+  .demo-edge.is-visible { opacity: 1; stroke-dashoffset: 0; }
 }

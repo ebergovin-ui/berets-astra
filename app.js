@@ -57,6 +57,12 @@
     guideDialog: $("#guideDialog"),
     guideClose: $("#guideClose"),
     guideStart: $("#guideStart"),
+    demoCaption: $("#demoCaption"),
+    demoCursor: $(".demo-cursor"),
+    demoHintButton: $(".demo-button--hint"),
+    demoBreakButton: $(".demo-button--break"),
+    demoStars: [...document.querySelectorAll(".demo-star")],
+    demoEdges: [...document.querySelectorAll(".demo-edge")],
   };
 
   const requestedId = new URLSearchParams(location.search).get("object");
@@ -87,7 +93,13 @@
     toastTimer: null,
     resultTimeout: null,
     resultInterval: null,
+    guideTimer: null,
+    guideFrame: 0,
   };
+
+  const GUIDE_POINTS = [[70, 160], [150, 140], [240, 155], [370, 155], [350, 260], [255, 260]];
+  const GUIDE_HINT = [116, 22];
+  const GUIDE_BREAK = [394, 22];
 
   function shuffle(values) {
     for (let i = values.length - 1; i > 0; i -= 1) {
@@ -140,6 +152,83 @@
 
   function formatNumber(value) {
     return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(".", ",");
+  }
+
+  function fitTaskTitle() {
+    elements.title.style.removeProperty("font-size");
+    if (/\s/.test(elements.title.textContent.trim())) return;
+    requestAnimationFrame(() => {
+      let size = Number.parseFloat(getComputedStyle(elements.title).fontSize);
+      const minimum = matchMedia("(max-width: 720px)").matches ? 30 : 34;
+      while (elements.title.scrollWidth > elements.title.clientWidth && size > minimum) {
+        size -= 1;
+        elements.title.style.fontSize = `${size}px`;
+      }
+    });
+  }
+
+  function resetGuideDemo() {
+    elements.demoStars.forEach((star) => star.classList.remove("is-visible"));
+    elements.demoEdges.forEach((edge) => edge.classList.remove("is-visible"));
+    elements.demoHintButton.classList.remove("is-demo-pressed");
+    elements.demoBreakButton.classList.remove("is-demo-pressed");
+    elements.demoCursor.classList.remove("is-clicking");
+    elements.demoCursor.style.transform = `translate(${GUIDE_HINT[0]}px, ${GUIDE_HINT[1]}px)`;
+    elements.demoCaption.textContent = "Сначала поле пустое";
+  }
+
+  function stopGuideDemo() {
+    clearTimeout(state.guideTimer);
+    state.guideTimer = null;
+  }
+
+  function guideFrames() {
+    const frames = [{ reset: true, delay: 850 }];
+    GUIDE_POINTS.forEach((point, index) => {
+      frames.push({ cursor: GUIDE_HINT, label: `Шаг ${index + 1}: курсор идёт к кнопке`, delay: 520 });
+      frames.push({ cursor: GUIDE_HINT, press: "hint", label: "Нажатие показывает только следующий шаг", delay: 360 });
+      frames.push({ cursor: point, star: index, edge: index > 0 ? index - 1 : null, label: index === 0 ? "Появилась только первая точка" : `Появилась точка ${index + 1} и один отрезок`, delay: 780 });
+    });
+    frames.push({ cursor: GUIDE_BREAK, label: "Для новой ветви курсор идёт к разрыву линии", delay: 520 });
+    frames.push({ cursor: GUIDE_BREAK, press: "break", label: "Нажатие обрывает текущую линию", delay: 480 });
+    frames.push({ cursor: GUIDE_HINT, label: "Последний шаг замыкает ковш", delay: 520 });
+    frames.push({ cursor: GUIDE_HINT, press: "hint", label: "Ещё одно нажатие показывает недостающий отрезок", delay: 360 });
+    frames.push({ cursor: GUIDE_POINTS[5], edge: 5, label: "Схема Большой Медведицы завершена", delay: 1200 });
+    return frames;
+  }
+
+  function runGuideFrame() {
+    const frames = guideFrames();
+    if (state.guideFrame >= frames.length) state.guideFrame = 0;
+    const frame = frames[state.guideFrame];
+    elements.demoHintButton.classList.remove("is-demo-pressed");
+    elements.demoBreakButton.classList.remove("is-demo-pressed");
+    elements.demoCursor.classList.remove("is-clicking");
+    if (frame.reset) resetGuideDemo();
+    if (frame.cursor) elements.demoCursor.style.transform = `translate(${frame.cursor[0]}px, ${frame.cursor[1]}px)`;
+    if (frame.star !== undefined) elements.demoStars[frame.star]?.classList.add("is-visible");
+    if (frame.edge !== null && frame.edge !== undefined) elements.demoEdges[frame.edge]?.classList.add("is-visible");
+    if (frame.press) {
+      (frame.press === "hint" ? elements.demoHintButton : elements.demoBreakButton).classList.add("is-demo-pressed");
+      void elements.demoCursor.getBoundingClientRect();
+      elements.demoCursor.classList.add("is-clicking");
+    }
+    if (frame.label) elements.demoCaption.textContent = frame.label;
+    state.guideFrame += 1;
+    state.guideTimer = setTimeout(runGuideFrame, frame.delay);
+  }
+
+  function startGuideDemo() {
+    stopGuideDemo();
+    state.guideFrame = 0;
+    resetGuideDemo();
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      elements.demoStars.forEach((star) => star.classList.add("is-visible"));
+      elements.demoEdges.forEach((edge) => edge.classList.add("is-visible"));
+      elements.demoCaption.textContent = "Каждое нажатие открывает ровно один следующий шаг";
+      return;
+    }
+    runGuideFrame();
   }
 
   function edgeKey(a, b) { return a < b ? `${a}-${b}` : `${b}-${a}`; }
@@ -729,6 +818,7 @@
     elements.title.textContent = state.item.name;
     elements.title.classList.toggle("is-medium", state.item.name.length > 8 && state.item.name.length <= 14);
     elements.title.classList.toggle("is-long", state.item.name.length > 14);
+    fitTaskTitle();
     elements.type.textContent = state.item.kind === "asterism" ? "Звёздный треугольник" : state.item.source === "teacher-document" ? "Схема из задания" : "Созвездие";
     elements.round.textContent = state.deckPosition;
     elements.phaseTwoLabel.textContent = state.item.kind === "asterism" ? "Назовите вершины" : "Найдите α-звезду";
@@ -782,12 +872,15 @@
   elements.nextButton.addEventListener("click", loadNext);
   elements.expandButton.addEventListener("click", toggleExpandedSky);
   elements.coordinateForm.addEventListener("submit", addCoordinateFromForm);
-  elements.guideButton.addEventListener("click", () => elements.guideDialog.showModal());
+  elements.guideButton.addEventListener("click", () => { elements.guideDialog.showModal(); startGuideDemo(); });
   elements.guideClose.addEventListener("click", () => elements.guideDialog.close());
   elements.guideStart.addEventListener("click", () => { elements.guideDialog.close(); elements.sky.focus(); });
   elements.guideDialog.addEventListener("click", (event) => {
     if (event.target === elements.guideDialog) elements.guideDialog.close();
   });
+  elements.guideDialog.addEventListener("close", stopGuideDemo);
+  window.addEventListener("resize", fitTaskTitle);
+  document.fonts?.ready.then(fitTaskTitle);
 
   document.addEventListener("keydown", (event) => {
     if (!elements.resultPanel.hidden) {

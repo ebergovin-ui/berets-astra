@@ -10,12 +10,12 @@
   <meta property="og:type" content="website">
   <meta property="og:title" content="АСТРА | Тренажёр созвездий">
   <meta property="og:description" content="Стройте схемы на координатной плоскости и запоминайте альфа-звёзды.">
-  <meta property="og:url" content="https://berets-astra.ertyyy466.chatgpt.site">
-  <meta property="og:image" content="https://berets-astra.ertyyy466.chatgpt.site/assets/og.png">
+  <meta property="og:url" content="https://ebergovin-ui.github.io/berets-astra/">
+  <meta property="og:image" content="https://ebergovin-ui.github.io/berets-astra/assets/og.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="АСТРА | Тренажёр созвездий">
   <meta name="twitter:description" content="Стройте схемы на координатной плоскости и запоминайте альфа-звёзды.">
-  <meta name="twitter:image" content="https://berets-astra.ertyyy466.chatgpt.site/assets/og.png">
+  <meta name="twitter:image" content="https://ebergovin-ui.github.io/berets-astra/assets/og.png">
   <title>BERETS / АСТРА | Тренажёр созвездий</title>
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -108,11 +108,7 @@
               <feGaussianBlur stdDeviation="5" result="blur"></feGaussianBlur>
               <feMerge><feMergeNode in="blur"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge>
             </filter>
-            <pattern id="grid" width="52" height="52" patternUnits="userSpaceOnUse">
-              <path d="M 52 0 L 0 0 0 52" fill="none" stroke="rgba(255,255,255,.035)" stroke-width="1"></path>
-            </pattern>
           </defs>
-          <rect width="1000" height="680" fill="url(#grid)"></rect>
           <g id="ambientLayer"></g>
           <g id="answerLayer"></g>
           <g id="lineLayer"></g>
@@ -161,24 +157,22 @@
         <text class="demo-button-label" x="417" y="45" text-anchor="middle">Оборвать линию</text>
         <rect y="82" width="560" height="278" fill="url(#demoGrid)"></rect>
         <g class="demo-constellation">
-          <line class="demo-edge demo-edge--1" x1="54" y1="150" x2="128" y2="168"></line>
-          <line class="demo-edge demo-edge--2" x1="128" y1="168" x2="204" y2="204"></line>
-          <line class="demo-edge demo-edge--3" x1="204" y1="204" x2="296" y2="204"></line>
-          <line class="demo-edge demo-edge--4" x1="296" y1="204" x2="296" y2="278"></line>
-          <line class="demo-edge demo-edge--5" x1="296" y1="278" x2="408" y2="278"></line>
-          <line class="demo-edge demo-edge--6" x1="408" y1="278" x2="472" y2="204"></line>
-          <line class="demo-edge demo-edge--7" x1="472" y1="204" x2="296" y2="204"></line>
-          <circle class="demo-star demo-star--1" cx="54" cy="150" r="8"></circle>
-          <circle class="demo-star demo-star--2" cx="128" cy="168" r="8"></circle>
-          <circle class="demo-star demo-star--3" cx="204" cy="204" r="8"></circle>
-          <circle class="demo-star demo-star--4" cx="296" cy="204" r="8"></circle>
-          <circle class="demo-star demo-star--5" cx="296" cy="278" r="8"></circle>
-          <circle class="demo-star demo-star--6" cx="408" cy="278" r="8"></circle>
-          <circle class="demo-star demo-star--7" cx="472" cy="204" r="8"></circle>
+          <line class="demo-edge" x1="70" y1="160" x2="150" y2="140"></line>
+          <line class="demo-edge" x1="150" y1="140" x2="240" y2="155"></line>
+          <line class="demo-edge" x1="240" y1="155" x2="370" y2="155"></line>
+          <line class="demo-edge" x1="370" y1="155" x2="350" y2="260"></line>
+          <line class="demo-edge" x1="350" y1="260" x2="255" y2="260"></line>
+          <line class="demo-edge" x1="255" y1="260" x2="240" y2="155"></line>
+          <circle class="demo-star" cx="70" cy="160" r="8"></circle>
+          <circle class="demo-star" cx="150" cy="140" r="8"></circle>
+          <circle class="demo-star" cx="240" cy="155" r="8"></circle>
+          <circle class="demo-star" cx="370" cy="155" r="8"></circle>
+          <circle class="demo-star" cx="350" cy="260" r="8"></circle>
+          <circle class="demo-star" cx="255" cy="260" r="8"></circle>
         </g>
         <g class="demo-cursor"><path d="M2 2v38l10-10 8 17 9-4-8-17h16z"></path><circle cx="4" cy="4" r="18"></circle></g>
       </svg>
-      <span class="demo-loop-label" aria-hidden="true">Демонстрация повторяется</span>
+      <span id="demoCaption" class="demo-loop-label" aria-hidden="true">Сначала поле пустое</span>
     </div>
     <button id="guideStart" class="button button-primary" type="button">Понятно, начать</button>
   </dialog>

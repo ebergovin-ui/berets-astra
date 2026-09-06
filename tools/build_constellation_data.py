@@ -94,26 +94,26 @@ SCHOOL_SCHEMES = {
     },
 }
 
-# Compact school-style figures for constellations whose attached table did not
-# contain a coordinate scheme.  These deliberately keep only the memorable
-# "skeleton" used in recognition exercises instead of the full atlas drawing.
-SIMPLIFIED_SCHEMES = {
-    "CrB": {"lines": [[(-8, 1), (-6, 4), (-3, 6), (0, 7), (3, 6), (6, 4), (8, 1)]], "alpha": (0, 7), "names": {(0, 7): "Альфекка"}},
-    "Ori": {"lines": [[(-6, 6), (-2, 2), (0, 1), (2, 2), (6, 6)], [(-2, 2), (-5, -7)], [(2, 2), (5, -7)], [(0, 1), (0, -3)]], "alpha": (-6, 6), "names": {(-6, 6): "Бетельгейзе", (-2, 2): "Альнитак", (0, 1): "Альнилам", (2, 2): "Минтака", (6, 6): "Беллатрикс", (-5, -7): "Саиф", (5, -7): "Ригель", (0, -3): "Меч Ориона"}},
-    "Gem": {"lines": [[(-5, 8), (-4, 4), (-3, 0), (-6, -6)], [(5, 8), (4, 4), (3, 0), (6, -6)], [(-4, 4), (4, 4)], [(-3, 0), (3, 0)]], "alpha": (-5, 8), "names": {(-5, 8): "Кастор", (5, 8): "Поллукс"}},
-    "Leo": {"lines": [[(-7, -3), (-7, 0), (-6, 3), (-4, 6), (-2, 3), (-7, 0)], [(-7, -3), (1, -2), (7, 0), (-2, 3)]], "alpha": (-7, -3), "names": {(-7, -3): "Регул"}},
-    "Boo": {"lines": [[(0, -7), (-3, -1), (0, 6), (4, 3), (5, -1), (0, -7)], [(-3, -1), (-6, 2)]], "alpha": (0, -7), "names": {(0, -7): "Арктур"}},
-    "Sco": {"lines": [[(-9, 6), (-7, 4), (-5, 5), (-4, 2), (-2, 0), (0, -3), (3, -6), (6, -7), (9, -5), (8, -2)]], "alpha": (-4, 2), "names": {(-4, 2): "Антарес"}},
-    "Peg": {"lines": [[(-4, 5), (4, 5), (4, -2), (-4, -2), (-4, 5)], [(-4, 5), (-8, 7), (-11, 6)], [(4, -2), (7, -6)], [(-4, -2), (-7, -6)]], "alpha": (-4, -2), "names": {(-4, -2): "Маркаб"}},
-    "Aur": {"lines": [[(0, 8), (6, 3), (5, -5), (-3, -7), (-7, 0), (0, 8)], [(0, 8), (-2, 3)]], "alpha": (0, 8), "names": {(0, 8): "Капелла"}},
-    "Aql": {"lines": [[(-8, 4), (-3, 1), (0, 3), (3, 1), (8, 4)], [(0, 3), (0, -6)], [(-3, 1), (-6, -3)]], "alpha": (0, 3), "names": {(0, 3): "Альтаир"}},
-    "Vir": {"lines": [[(-8, 5), (-4, 2), (0, 0), (4, -2), (7, -7)], [(-4, 2), (-7, -1)], [(0, 0), (5, 2), (9, 1)]], "alpha": (7, -7), "names": {(7, -7): "Спика"}},
-    "Her": {"lines": [[(-3, 3), (3, 4), (4, -1), (-2, -2), (-3, 3)], [(-3, 3), (-7, 7)], [(3, 4), (8, 7)], [(-2, -2), (-6, -7)], [(4, -1), (7, -7)]], "alpha": (-6, -7), "names": {(-6, -7): "Рас Альгети"}},
-    "CVn": {"lines": [[(-7, 3), (7, -3)]], "alpha": (7, -3), "names": {(7, -3): "Сердце Карла"}},
-    "CMa": {"lines": [[(-8, 3), (-2, 4), (1, 1), (4, -3), (2, -6), (-4, -5), (-8, 3)], [(-2, 4), (2, 7), (1, 1)]], "alpha": (-2, 4), "names": {(-2, 4): "Сириус"}},
-    "CMi": {"lines": [[(-7, -2), (7, 2)]], "alpha": (-7, -2), "names": {(-7, -2): "Процион"}},
-    "Cru": {"lines": [[(-8, 1), (8, -1)], [(0, 7), (0, -7)]], "alpha": (0, -7), "names": {(0, -7): "Акрукс"}},
-    "Tau": {"lines": [[(-10, 8), (-5, 4), (-2, 0), (0, -4)], [(10, 8), (5, 4), (2, 0), (0, -4)]], "alpha": (-5, 4), "names": {(-5, 4): "Альдебаран"}},
+# Verified Western line figures from Stellarium's public sky-culture dataset.
+# HIP identifiers preserve real star placement; only peripheral decorative paths
+# are omitted where a compact classroom figure is more legible.
+STELLARIUM_SCHEMES = {
+    "CrB": [[76127, 75695, 76267, 76952, 77512, 78159, 78493]],
+    "Ori": [[27989, 25336, 24436, 27366, 27989], [26727, 26311, 25930]],
+    "Gem": [[36850, 34693, 32246, 30343, 28734], [37826, 36962, 35550, 34088, 31681], [34693, 35550], [32246, 33018], [36962, 37740]],
+    "Leo": [[57632, 54879, 49669, 49583, 50583, 54872, 57632], [50583, 50335, 48455, 47908], [54872, 54879]],
+    "Boo": [[71795, 69673, 72105, 74666, 73555, 71075, 71053, 69673, 67927, 67459]],
+    "Sco": [[85927, 86670, 87073, 86228, 84143, 82671, 82514, 82396, 81266, 80763, 78401], [80763, 78265], [80763, 78820]],
+    "Peg": [[677, 113881, 113963, 1067, 677], [113881, 112748, 112440, 109176], [113963, 112447, 112029, 109427]],
+    "Aur": [[28380, 28360, 24608, 23453, 23015], [25428, 23015], [25428, 28380]],
+    "Aql": [[98036, 97649, 97278], [97649, 95501, 97804, 99473], [95501, 93747, 93244], [95501, 93805]],
+    "Vir": [[57380, 60030, 61941, 65474, 69427, 69701, 71957], [65474, 66249, 68520, 72220], [66249, 63090, 63608], [63090, 61941]],
+    "Her": [[81833, 81693, 83207, 84380, 81833], [81833, 81126, 79992, 77760], [84380, 84606, 85112, 87808, 86414], [81693, 80816, 80170], [83207, 84379, 85693, 86974], [80816, 84345]],
+    "CVn": [[61317, 63125]],
+    "CMa": [[33160, 34045, 33347, 32349, 33977, 34444, 35037, 35904], [33579, 33856, 34444], [32349, 30324], [30122, 33579], [33347, 33160]],
+    "CMi": [[37279, 36188]],
+    "Cru": [[61084, 60718], [62434, 59747]],
+    "Tau": [[25428, 21881, 20889], [21421, 26451], [21421, 20894, 20205], [20889, 20648, 20455], [20205, 20455]],
 }
 
 
@@ -189,6 +189,24 @@ def indexed_scheme(lines):
     return index, points, edges
 
 
+def stellarium_scheme(paths, star_pos):
+    coordinate_lines = []
+    for path in paths:
+        missing = [hip for hip in path if str(hip) not in star_pos]
+        if missing:
+            raise RuntimeError(f"Missing HIP positions: {missing}")
+        coordinate_lines.append([star_pos[str(hip)] for hip in path])
+
+    _, normalized, edges = normalize(coordinate_lines)
+    points = [{"x": (point["x"] - 50) * .36, "y": (50 - point["y"]) * .36} for point in normalized]
+    unique_hips = []
+    for path in paths:
+        for hip in path:
+            if hip not in unique_hips:
+                unique_hips.append(hip)
+    return unique_hips, points, edges
+
+
 def integerize_points(points):
     """Place every reference star on a unique integer grid coordinate."""
     candidates = [(x, y) for x in range(-16, 17) for y in range(-16, 17)]
@@ -202,6 +220,22 @@ def integerize_points(points):
         used.add(target)
         output.append({"x": target[0], "y": target[1]})
     return output
+
+
+def rotate_points(points, degrees):
+    angle = math.radians(degrees)
+    cosine = math.cos(angle)
+    sine = math.sin(angle)
+    return [
+        {"x": point["x"] * cosine - point["y"] * sine, "y": point["x"] * sine + point["y"] * cosine}
+        for point in points
+    ]
+
+
+def fit_points(points, limit=13):
+    extent = max(max(abs(point["x"]), abs(point["y"])) for point in points)
+    scale = limit / max(extent, 1)
+    return [{"x": point["x"] * scale, "y": point["y"] * scale} for point in points]
 
 
 def star_label(item, abbr):
@@ -246,14 +280,22 @@ def main():
             nearest_item, _ = min(constellation_stars, key=lambda candidate: angular_distance(raw_point, candidate[1]))
             point_names.append(star_label(nearest_item, abbr))
         source = "astronomical"
-        if abbr in SCHOOL_SCHEMES or abbr in SIMPLIFIED_SCHEMES:
-            scheme = SCHOOL_SCHEMES.get(abbr, SIMPLIFIED_SCHEMES.get(abbr))
+        if abbr in SCHOOL_SCHEMES:
+            scheme = SCHOOL_SCHEMES[abbr]
             point_index, points, edges = indexed_scheme(scheme["lines"])
             alpha_index = point_index[scheme["alpha"]]
             point_names = [f"Звезда схемы №{index + 1}" for index in range(len(points))]
             for coordinate, star_name in scheme.get("names", {}).items():
                 point_names[point_index[coordinate]] = star_name
-            source = "teacher-document" if abbr in SCHOOL_SCHEMES else "curated-school-scheme"
+            source = "teacher-document"
+        elif abbr in STELLARIUM_SCHEMES:
+            hips, points, edges = stellarium_scheme(STELLARIUM_SCHEMES[abbr], star_pos)
+            alpha_index = min(
+                range(len(hips)),
+                key=lambda index: angular_distance(star_pos[str(hips[index])], alpha_coord),
+            )
+            point_names = [star_label(names.get(str(hip), {"hip": hip}), abbr) for hip in hips]
+            source = "stellarium-western"
         else:
             # Convert the astronomical projection to a roomy printable grid.
             points = [
@@ -261,6 +303,8 @@ def main():
                 for point in points
             ]
 
+        if abbr == "Tau":
+            points = fit_points(rotate_points(points, 45))
         points = integerize_points(points)
         point_names[alpha_index] = alpha_name
 
@@ -311,7 +355,7 @@ def main():
 
     payload = json.dumps(output, ensure_ascii=False, separators=(",", ":"))
     (ROOT / "constellations.js").write_text(
-        "// Geometry derived from d3-celestial (MIT). See README.md.\n"
+        "// Geometry uses the teacher document and Stellarium Western line figures. See README.md.\n"
         f"window.CONSTELLATIONS={payload};\n",
         encoding="utf-8",
     )
