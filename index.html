@@ -35,6 +35,7 @@
       </span>
     </a>
     <div class="top-stats" aria-label="Статистика тренировки">
+      <button id="guideButton" class="guide-button" type="button">Как тренироваться</button>
       <span><b id="streakValue">0</b> серия</span>
       <span><b id="masteredValue">0</b> освоено</span>
     </div>
@@ -60,34 +61,35 @@
         <p id="statusText" class="status-text">Выберите первую звезду.</p>
       </div>
 
-      <form id="coordinateForm" class="coordinate-entry" novalidate>
-        <div class="coordinate-entry__heading">
-          <div><b>Точка по координатам</b><span>Выберите из списка или введите целое число</span></div>
-          <span id="pointCounter" class="point-counter">0 / 0</span>
-        </div>
-        <div class="coordinate-entry__controls">
-          <label><span>X</span><input id="coordinateX" name="x" type="text" value="0" list="xCoordinates" inputmode="text" pattern="-?[0-9]{1,2}" maxlength="3" autocomplete="off" aria-label="Координата X: выберите из списка или введите"></label>
-          <label><span>Y</span><input id="coordinateY" name="y" type="text" value="0" list="yCoordinates" inputmode="text" pattern="-?[0-9]{1,2}" maxlength="3" autocomplete="off" aria-label="Координата Y: выберите из списка или введите"></label>
-          <button id="addCoordinateButton" class="button button-coordinate" type="submit">Поставить</button>
-        </div>
-        <datalist id="xCoordinates"></datalist>
-        <datalist id="yCoordinates"></datalist>
-        <p id="coordinateError" class="coordinate-error" aria-live="polite"></p>
-      </form>
-
       <div class="tool-row" aria-label="Инструменты рисования">
         <button id="undoButton" class="button button-quiet" type="button">Отменить</button>
         <button id="clearButton" class="button button-quiet" type="button">Очистить</button>
       </div>
 
       <div class="action-row">
-        <button id="hintButton" class="button button-hint" type="button"><span aria-hidden="true">+</span> Показать одну точку</button>
+        <button id="hintButton" class="button button-hint" type="button"><span aria-hidden="true">+</span> Показать шаг</button>
+        <button id="answerButton" class="button button-hint button-answer" type="button">Показать ответ</button>
       </div>
 
       <div class="shortcut-note">
         <span><kbd>Esc</kbd> оторвать линию</span>
         <span><kbd>Ctrl Z</kbd> отменить</span>
       </div>
+
+      <details class="coordinate-entry-shell">
+        <summary>Ввести координаты вручную <span id="pointCounter" class="point-counter">0 / 0</span></summary>
+        <form id="coordinateForm" class="coordinate-entry" novalidate>
+          <p>Выберите из списка или введите целое число от −16 до 16.</p>
+          <div class="coordinate-entry__controls">
+            <label><span>X</span><input id="coordinateX" name="x" type="text" value="0" list="xCoordinates" inputmode="text" pattern="-?[0-9]{1,2}" maxlength="3" autocomplete="off" aria-label="Координата X: выберите из списка или введите"></label>
+            <label><span>Y</span><input id="coordinateY" name="y" type="text" value="0" list="yCoordinates" inputmode="text" pattern="-?[0-9]{1,2}" maxlength="3" autocomplete="off" aria-label="Координата Y: выберите из списка или введите"></label>
+            <button id="addCoordinateButton" class="button button-coordinate" type="submit">Поставить</button>
+          </div>
+          <datalist id="xCoordinates"></datalist>
+          <datalist id="yCoordinates"></datalist>
+          <p id="coordinateError" class="coordinate-error" aria-live="polite"></p>
+        </form>
+      </details>
     </section>
 
     <section class="sky-panel" aria-label="Поле для построения созвездия">
@@ -110,6 +112,7 @@
           <g id="ambientLayer"></g>
           <g id="answerLayer"></g>
           <g id="lineLayer"></g>
+          <g id="guideLayer"></g>
           <g id="hintLayer"></g>
           <g id="starLayer"></g>
         </svg>
@@ -119,7 +122,6 @@
         <span id="penState"><i></i> Линия не начата</span>
         <div class="field-actions">
           <button id="liftButton" class="break-button" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h5m6 0h5M10.5 8.5l3 7m0-7-3 7"></path></svg>Оборвать линию</button>
-          <button id="answerButton" class="text-button" type="button">Показать ответ</button>
         </div>
       </div>
       <p id="coordinateStatus" class="sr-only" role="status" aria-live="polite"></p>
@@ -143,6 +145,20 @@
     <span class="feedback-toast__mark" aria-hidden="true"></span>
     <div><b id="feedbackTitle"></b><span id="feedbackText"></span></div>
   </div>
+
+  <dialog id="guideDialog" class="guide-dialog" aria-labelledby="guideTitle">
+    <div class="guide-dialog__head">
+      <div><p class="task-type">Руководство</p><h2 id="guideTitle">Как тренироваться</h2></div>
+      <button id="guideClose" type="button" aria-label="Закрыть руководство">×</button>
+    </div>
+    <ol>
+      <li><b>Постройте схему.</b><span>Кликайте по целым делениям сетки. Каждая следующая точка соединяется с предыдущей.</span></li>
+      <li><b>Разрывайте линию.</b><span>Если нужен новый отрезок, нажмите «Оборвать линию» у поля.</span></li>
+      <li><b>Берите подсказку по шагам.</b><span>Сначала появится точка, затем — нужное соединение. Салатовый пунктир показывает пропущенный отрезок.</span></li>
+      <li><b>Найдите α-звезду.</b><span>После верной схемы точки станут салатовыми. Нажмите на самую яркую.</span></li>
+    </ol>
+    <button id="guideStart" class="button button-primary" type="button">Понятно, начать</button>
+  </dialog>
 
   <script src="constellations.js"></script>
   <script src="app.js"></script>

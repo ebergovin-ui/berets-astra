@@ -2,7 +2,7 @@
   "use strict";
 
   const objects = window.CONSTELLATIONS;
-  const GRID = { minX: -16, maxX: 16, minY: -11, maxY: 11, left: 70, right: 930, top: 60, bottom: 620 };
+  const GRID = { minX: -16, maxX: 16, minY: -16, maxY: 16, left: 70, right: 930, top: 60, bottom: 620 };
   const SVG_NS = "http://www.w3.org/2000/svg";
 
   const $ = (selector) => document.querySelector(selector);
@@ -21,6 +21,7 @@
     ambient: $("#ambientLayer"),
     answer: $("#answerLayer"),
     lines: $("#lineLayer"),
+    guides: $("#guideLayer"),
     hints: $("#hintLayer"),
     stars: $("#starLayer"),
     hintButton: $("#hintButton"),
@@ -51,6 +52,10 @@
     feedbackTitle: $("#feedbackTitle"),
     feedbackText: $("#feedbackText"),
     resultTimer: $("#resultTimer"),
+    guideButton: $("#guideButton"),
+    guideDialog: $("#guideDialog"),
+    guideClose: $("#guideClose"),
+    guideStart: $("#guideStart"),
   };
 
   const requestedId = new URLSearchParams(location.search).get("object");
@@ -67,6 +72,8 @@
     active: null,
     selected: new Set(),
     hintCount: 0,
+    hintPoints: new Set(),
+    hintEdges: new Set(),
     failedChecks: 0,
     fullAnswer: false,
     history: [],
@@ -185,6 +192,7 @@
 
   function renderDrawing() {
     elements.lines.replaceChildren();
+    elements.guides.replaceChildren();
     elements.stars.replaceChildren();
     state.edges.forEach(([a, b]) => {
       const p1 = toSvg(state.points[a]);
@@ -216,7 +224,45 @@
     elements.addCoordinateButton.disabled = inputDisabled;
     const pointList = state.points.map((point, index) => `Точка ${index + 1}: x ${formatNumber(point.x)}, y ${formatNumber(point.y)}`).join("; ");
     elements.drawingDescription.textContent = `${pluralize(state.points.length, "Поставлена точка", "Поставлены точки", "Поставлено точек")}. ${pointList}. ${pluralize(state.edges.length, "Соединена линия", "Соединены линии", "Соединено линий")}.`;
+    renderMissingConnectionGuide();
     state.newEdgeKey = null;
+  }
+
+  function referenceToUserMap() {
+    if (state.points.length !== state.item.points.length) return [];
+    const pairs = [];
+    state.item.points.forEach((_, referenceIndex) => {
+      const signature = nodeSignature(state.item.points, referenceIndex);
+      state.points.forEach((__, userIndex) => {
+        pairs.push({ referenceIndex, userIndex, error: rmse(signature, nodeSignature(state.points, userIndex)) });
+      });
+    });
+    pairs.sort((a, b) => a.error - b.error);
+    const mapping = Array(state.item.points.length).fill(-1);
+    const usedUsers = new Set();
+    pairs.forEach(({ referenceIndex, userIndex }) => {
+      if (mapping[referenceIndex] < 0 && !usedUsers.has(userIndex)) {
+        mapping[referenceIndex] = userIndex;
+        usedUsers.add(userIndex);
+      }
+    });
+    return mapping;
+  }
+
+  function renderMissingConnectionGuide() {
+    if (state.phase !== "draw" || state.points.length !== state.item.points.length || state.edges.length >= state.item.edges.length) return;
+    const mapping = referenceToUserMap();
+    const missing = state.item.edges.find(([a, b]) => {
+      const userA = mapping[a];
+      const userB = mapping[b];
+      return userA >= 0 && userB >= 0 && !state.edges.some(([x, y]) => edgeKey(x, y) === edgeKey(userA, userB));
+    });
+    if (!missing) return;
+    const userA = mapping[missing[0]];
+    const userB = mapping[missing[1]];
+    const p1 = toSvg(state.points[userA]);
+    const p2 = toSvg(state.points[userB]);
+    elements.guides.append(svgElement("line", { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, class: "connection-guide" }));
   }
 
   function pluralize(value, one, few, many) {
@@ -334,7 +380,7 @@
     const y = Number(elements.coordinateY.value);
     const valid = Number.isInteger(x) && Number.isInteger(y) && x >= GRID.minX && x <= GRID.maxX && y >= GRID.minY && y <= GRID.maxY;
     if (!valid) {
-      elements.coordinateError.textContent = "Введите целые X от −16 до 16 и Y от −11 до 11.";
+      elements.coordinateError.textContent = "Введите целые X и Y от −16 до 16.";
       return;
     }
     elements.coordinateError.textContent = "";
@@ -353,21 +399,72 @@
     });
   }
 
+  function renderHints(newPoint = -1, newEdge = -1) {
+    elements.hints.replaceChildren();
+    state.hintEdges.forEach((edgeIndex) => {
+      const [a, b] = state.item.edges[edgeIndex];
+      const p1 = toSvg(state.item.points[a]);
+      const p2 = toSvg(state.item.points[b]);
+      elements.hints.append(svgElement("line", { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, class: `hint-line${edgeIndex === newEdge ? " is-new" : ""}` }));
+    });
+    state.hintPoints.forEach((index) => {
+      const point = state.item.points[index];
+      const pos = toSvg(point);
+      elements.hints.append(svgElement("circle", { cx: pos.x, cy: pos.y, r: index === newPoint ? 12 : 8, class: `hint-point${index === newPoint ? " is-new" : ""}` }));
+    });
+  }
+
   function showHint() {
-    if (state.hintCount >= state.item.points.length) {
-      setStatus("Все точки схемы уже показаны.", "");
+    if (state.hintPoints.size === 0) {
+      const first = state.item.edges[0]?.[0] ?? 0;
+      state.hintPoints.add(first);
+      state.hintCount += 1;
+      renderHints(first, -1);
+      setStatus(`Шаг 1: поставьте точку (${state.item.points[first].x}; ${state.item.points[first].y}).`, "");
+      elements.hintButton.textContent = "Показать следующий шаг";
       return;
     }
+
+    let newPoint = -1;
+    let newEdge = -1;
+    for (let index = 0; index < state.item.edges.length; index += 1) {
+      if (state.hintEdges.has(index)) continue;
+      const [a, b] = state.item.edges[index];
+      if (state.hintPoints.has(a) && state.hintPoints.has(b)) {
+        state.hintEdges.add(index);
+        newEdge = index;
+        break;
+      }
+      if (state.hintPoints.has(a) || state.hintPoints.has(b)) {
+        newPoint = state.hintPoints.has(a) ? b : a;
+        state.hintPoints.add(newPoint);
+        state.hintEdges.add(index);
+        newEdge = index;
+        break;
+      }
+    }
+    if (newPoint < 0 && newEdge < 0) {
+      const nextEdge = state.item.edges.findIndex((_, index) => !state.hintEdges.has(index));
+      if (nextEdge >= 0) {
+        newPoint = state.item.edges[nextEdge][0];
+        state.hintPoints.add(newPoint);
+      }
+    }
+    if (newPoint < 0 && newEdge < 0) {
+      const isolated = state.item.points.findIndex((_, index) => !state.hintPoints.has(index));
+      if (isolated >= 0) { newPoint = isolated; state.hintPoints.add(isolated); }
+    }
     state.hintCount += 1;
-    elements.hints.replaceChildren();
-    state.item.points.slice(0, state.hintCount).forEach((point, index) => {
-      const pos = toSvg(point);
-      elements.hints.append(svgElement("circle", { cx: pos.x, cy: pos.y, r: index === state.hintCount - 1 ? 12 : 8, class: `hint-point${index === state.hintCount - 1 ? " is-new" : ""}` }));
-    });
-    const point = state.item.points[state.hintCount - 1];
-    elements.hintButton.textContent = state.hintCount >= state.item.points.length ? "Все точки показаны" : "Показать ещё одну точку";
-    elements.hintButton.disabled = state.hintCount >= state.item.points.length;
-    setStatus(`Показана точка ${state.hintCount} из ${state.item.points.length}: (${point.x}; ${point.y}). Дальше продолжайте сами.`, "");
+    renderHints(newPoint, newEdge);
+    const complete = state.hintPoints.size === state.item.points.length && state.hintEdges.size === state.item.edges.length;
+    elements.hintButton.textContent = complete ? "Все шаги показаны" : "Показать следующий шаг";
+    elements.hintButton.disabled = complete;
+    if (newEdge >= 0) {
+      const [a, b] = state.item.edges[newEdge];
+      setStatus(`Соедините точки (${state.item.points[a].x}; ${state.item.points[a].y}) и (${state.item.points[b].x}; ${state.item.points[b].y}).`, "");
+    } else if (newPoint >= 0) {
+      setStatus(`Поставьте точку (${state.item.points[newPoint].x}; ${state.item.points[newPoint].y}).`, "");
+    }
   }
 
   function normalized(values) {
@@ -511,11 +608,9 @@
     if (selected !== expected) {
       state.failedChecks += 1;
       state.wrongIndices.add(selected);
-      const referenceIndex = referenceIndexForUser(selected);
-      const selectedName = state.item.pointNames?.[referenceIndex] || `звезда схемы №${referenceIndex + 1}`;
-      setStatus(`Выбрана не α-звезда: ${selectedName}. Попробуйте другую точку.`, "error");
+      setStatus(`Выбрана не «${state.item.alpha}». Попробуйте другую точку.`, "error");
       renderDrawing();
-      showToast("Не та звезда", `Вы выбрали «${selectedName}». Ищите ${state.item.alpha}.`, "error", 4000);
+      showToast("Не та звезда", `Выбрана не «${state.item.alpha}».`, "error", 4000);
       return;
     }
     state.wrongIndices.delete(selected);
@@ -531,7 +626,7 @@
         const row = document.createElement("p");
         const name = document.createElement("b");
         name.textContent = vertex.star;
-        row.append(name, document.createTextNode(`, ${vertex.constellation}`));
+        row.append(name, document.createTextNode(` (${vertex.constellation})`));
         elements.answerFact.append(row);
       });
       return;
@@ -540,7 +635,7 @@
     const name = document.createElement("b");
     const designation = document.createElement("span");
     name.textContent = state.item.alpha;
-    designation.textContent = ` ${state.item.alphaDesignation}`;
+    designation.textContent = ` (${state.item.alphaScientific || state.item.alphaDesignation})`;
     row.append(name, designation);
     elements.answerFact.append(row);
   }
@@ -617,6 +712,8 @@
     state.active = null;
     state.selected = new Set();
     state.hintCount = 0;
+    state.hintPoints = new Set();
+    state.hintEdges = new Set();
     state.failedChecks = 0;
     state.fullAnswer = false;
     state.history = [];
@@ -636,7 +733,7 @@
     const hintPlus = document.createElement("span");
     hintPlus.setAttribute("aria-hidden", "true");
     hintPlus.textContent = "+";
-    elements.hintButton.append(hintPlus, document.createTextNode(" Показать одну точку"));
+    elements.hintButton.append(hintPlus, document.createTextNode(" Показать шаг"));
     elements.answerButton.disabled = false;
     elements.answerButton.textContent = "Показать ответ";
     const wasModalOpen = !elements.resultPanel.hidden;
@@ -677,6 +774,12 @@
   elements.nextButton.addEventListener("click", loadNext);
   elements.expandButton.addEventListener("click", toggleExpandedSky);
   elements.coordinateForm.addEventListener("submit", addCoordinateFromForm);
+  elements.guideButton.addEventListener("click", () => elements.guideDialog.showModal());
+  elements.guideClose.addEventListener("click", () => elements.guideDialog.close());
+  elements.guideStart.addEventListener("click", () => { elements.guideDialog.close(); elements.sky.focus(); });
+  elements.guideDialog.addEventListener("click", (event) => {
+    if (event.target === elements.guideDialog) elements.guideDialog.close();
+  });
 
   document.addEventListener("keydown", (event) => {
     if (!elements.resultPanel.hidden) {

@@ -33,7 +33,7 @@ for (const object of objects) {
   const coordinateKeys = new Set();
   for (const point of object.points) {
     if (!Number.isInteger(point.x) || !Number.isInteger(point.y)) throw new Error(`${object.id}: non-integer coordinate`);
-    if (point.x < -16 || point.x > 16 || point.y < -11 || point.y > 11) throw new Error(`${object.id}: coordinate outside grid`);
+    if (point.x < -16 || point.x > 16 || point.y < -16 || point.y > 16) throw new Error(`${object.id}: coordinate outside grid`);
     const key = `${point.x},${point.y}`;
     if (coordinateKeys.has(key)) throw new Error(`${object.id}: duplicate coordinate ${key}`);
     coordinateKeys.add(key);
@@ -41,4 +41,12 @@ for (const object of objects) {
   if (object.pointNames.length !== object.points.length) throw new Error(`${object.id}: point name count mismatch`);
 }
 
-console.log("Verified: CSP, safe DOM sinks, 27 objects, integer coordinates and point names.");
+const orion = objects.find((object) => object.id === "Ori");
+if (orion.points.length !== 8 || orion.edges.length !== 7) throw new Error("Orion must use the compact 8-point school figure");
+for (const object of objects.filter((item) => item.source === "curated-school-scheme")) {
+  if (object.points.length > 10) throw new Error(`${object.id}: curated figure is too detailed`);
+}
+if (!app.includes("minY: -16, maxY: 16")) throw new Error("Both grid axes must span -16..16");
+if (!app.includes("connection-guide")) throw new Error("Missing animated guide for an unconnected edge");
+
+console.log("Verified: CSP, safe DOM sinks, 27 compact objects, ±16 grid, hints and point names.");

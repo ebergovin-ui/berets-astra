@@ -43,6 +43,16 @@ TARGETS = [
     ("Tau", "Телец", "Альдебаран"),
 ]
 
+GENITIVE = {
+    "Cyg": "Лебедя", "CrB": "Северной Короны", "Ori": "Ориона", "Gem": "Близнецов",
+    "Leo": "Льва", "And": "Андромеды", "Lyr": "Лиры", "Boo": "Волопаса",
+    "Sco": "Скорпиона", "Per": "Персея", "Peg": "Пегаса", "Cep": "Цефея",
+    "UMa": "Большой Медведицы", "UMi": "Малой Медведицы", "Aur": "Возничего",
+    "Aql": "Орла", "Vir": "Девы", "Her": "Геркулеса", "Dra": "Дракона",
+    "Cas": "Кассиопеи", "CVn": "Гончих Псов", "CMa": "Большого Пса",
+    "CMi": "Малого Пса", "Cru": "Южного Креста", "Tau": "Тельца",
+}
+
 # Exact coordinate schemes printed in the teacher's attached Word document.
 # Each nested list is a separate stroke; a repeated point closes a loop.
 SCHOOL_SCHEMES = {
@@ -82,6 +92,28 @@ SCHOOL_SCHEMES = {
         "lines": [[(-15, -7), (-10, -5), (-3, -6), (6, -6), (5, -10), (-1, -10), (-3, -6)]],
         "alpha": (6, -6),
     },
+}
+
+# Compact school-style figures for constellations whose attached table did not
+# contain a coordinate scheme.  These deliberately keep only the memorable
+# "skeleton" used in recognition exercises instead of the full atlas drawing.
+SIMPLIFIED_SCHEMES = {
+    "CrB": {"lines": [[(-8, 1), (-6, 4), (-3, 6), (0, 7), (3, 6), (6, 4), (8, 1)]], "alpha": (0, 7), "names": {(0, 7): "Альфекка"}},
+    "Ori": {"lines": [[(-6, 6), (-2, 2), (0, 1), (2, 2), (6, 6)], [(-2, 2), (-5, -7)], [(2, 2), (5, -7)], [(0, 1), (0, -3)]], "alpha": (-6, 6), "names": {(-6, 6): "Бетельгейзе", (-2, 2): "Альнитак", (0, 1): "Альнилам", (2, 2): "Минтака", (6, 6): "Беллатрикс", (-5, -7): "Саиф", (5, -7): "Ригель", (0, -3): "Меч Ориона"}},
+    "Gem": {"lines": [[(-5, 8), (-4, 4), (-3, 0), (-6, -6)], [(5, 8), (4, 4), (3, 0), (6, -6)], [(-4, 4), (4, 4)], [(-3, 0), (3, 0)]], "alpha": (-5, 8), "names": {(-5, 8): "Кастор", (5, 8): "Поллукс"}},
+    "Leo": {"lines": [[(-7, -3), (-7, 0), (-6, 3), (-4, 6), (-2, 3), (-7, 0)], [(-7, -3), (1, -2), (7, 0), (-2, 3)]], "alpha": (-7, -3), "names": {(-7, -3): "Регул"}},
+    "Boo": {"lines": [[(0, -7), (-3, -1), (0, 6), (4, 3), (5, -1), (0, -7)], [(-3, -1), (-6, 2)]], "alpha": (0, -7), "names": {(0, -7): "Арктур"}},
+    "Sco": {"lines": [[(-9, 6), (-7, 4), (-5, 5), (-4, 2), (-2, 0), (0, -3), (3, -6), (6, -7), (9, -5), (8, -2)]], "alpha": (-4, 2), "names": {(-4, 2): "Антарес"}},
+    "Peg": {"lines": [[(-4, 5), (4, 5), (4, -2), (-4, -2), (-4, 5)], [(-4, 5), (-8, 7), (-11, 6)], [(4, -2), (7, -6)], [(-4, -2), (-7, -6)]], "alpha": (-4, -2), "names": {(-4, -2): "Маркаб"}},
+    "Aur": {"lines": [[(0, 8), (6, 3), (5, -5), (-3, -7), (-7, 0), (0, 8)], [(0, 8), (-2, 3)]], "alpha": (0, 8), "names": {(0, 8): "Капелла"}},
+    "Aql": {"lines": [[(-8, 4), (-3, 1), (0, 3), (3, 1), (8, 4)], [(0, 3), (0, -6)], [(-3, 1), (-6, -3)]], "alpha": (0, 3), "names": {(0, 3): "Альтаир"}},
+    "Vir": {"lines": [[(-8, 5), (-4, 2), (0, 0), (4, -2), (7, -7)], [(-4, 2), (-7, -1)], [(0, 0), (5, 2), (9, 1)]], "alpha": (7, -7), "names": {(7, -7): "Спика"}},
+    "Her": {"lines": [[(-3, 3), (3, 4), (4, -1), (-2, -2), (-3, 3)], [(-3, 3), (-7, 7)], [(3, 4), (8, 7)], [(-2, -2), (-6, -7)], [(4, -1), (7, -7)]], "alpha": (-6, -7), "names": {(-6, -7): "Рас Альгети"}},
+    "CVn": {"lines": [[(-7, 3), (7, -3)]], "alpha": (7, -3), "names": {(7, -3): "Сердце Карла"}},
+    "CMa": {"lines": [[(-8, 3), (-2, 4), (1, 1), (4, -3), (2, -6), (-4, -5), (-8, 3)], [(-2, 4), (2, 7), (1, 1)]], "alpha": (-2, 4), "names": {(-2, 4): "Сириус"}},
+    "CMi": {"lines": [[(-7, -2), (7, 2)]], "alpha": (-7, -2), "names": {(-7, -2): "Процион"}},
+    "Cru": {"lines": [[(-8, 1), (8, -1)], [(0, 7), (0, -7)]], "alpha": (0, -7), "names": {(0, -7): "Акрукс"}},
+    "Tau": {"lines": [[(-6, 4), (0, 0), (7, 6)], [(-6, -4), (0, 0), (8, -5)], [(-3, 2), (0, 0), (-3, -2)]], "alpha": (0, 0), "names": {(0, 0): "Альдебаран"}},
 }
 
 
@@ -159,7 +191,7 @@ def indexed_scheme(lines):
 
 def integerize_points(points):
     """Place every reference star on a unique integer grid coordinate."""
-    candidates = [(x, y) for x in range(-15, 16) for y in range(-10, 11)]
+    candidates = [(x, y) for x in range(-16, 17) for y in range(-16, 17)]
     used = set()
     output = []
     for point in points:
@@ -214,12 +246,14 @@ def main():
             nearest_item, _ = min(constellation_stars, key=lambda candidate: angular_distance(raw_point, candidate[1]))
             point_names.append(star_label(nearest_item, abbr))
         source = "astronomical"
-        if abbr in SCHOOL_SCHEMES:
-            scheme = SCHOOL_SCHEMES[abbr]
+        if abbr in SCHOOL_SCHEMES or abbr in SIMPLIFIED_SCHEMES:
+            scheme = SCHOOL_SCHEMES.get(abbr, SIMPLIFIED_SCHEMES.get(abbr))
             point_index, points, edges = indexed_scheme(scheme["lines"])
             alpha_index = point_index[scheme["alpha"]]
             point_names = [f"Звезда схемы №{index + 1}" for index in range(len(points))]
-            source = "teacher-document"
+            for coordinate, star_name in scheme.get("names", {}).items():
+                point_names[point_index[coordinate]] = star_name
+            source = "teacher-document" if abbr in SCHOOL_SCHEMES else "curated-school-scheme"
         else:
             # Convert the astronomical projection to a roomy printable grid.
             points = [
@@ -236,6 +270,7 @@ def main():
             "kind": "constellation",
             "alpha": alpha_name,
             "alphaDesignation": f"α {abbr}",
+            "alphaScientific": f"α {GENITIVE[abbr]}",
             "alphaIndex": alpha_index,
             "pointNames": point_names,
             "source": source,
