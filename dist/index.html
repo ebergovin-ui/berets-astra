@@ -35,7 +35,7 @@
       </span>
     </a>
     <div class="top-stats" aria-label="Статистика тренировки">
-      <button id="guideButton" class="guide-button" type="button">Как тренироваться</button>
+      <button id="guideButton" class="guide-button" type="button">Руководство</button>
       <span><b id="streakValue">0</b> серия</span>
       <span><b id="masteredValue">0</b> освоено</span>
     </div>
@@ -69,6 +69,10 @@
       <div class="action-row">
         <button id="hintButton" class="button button-hint" type="button"><span aria-hidden="true">+</span> Показать шаг</button>
         <button id="answerButton" class="button button-hint button-answer" type="button">Показать ответ</button>
+        <div class="action-row__minor">
+          <button id="liftButton" class="button button-break" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h5m6 0h5M10.5 8.5l3 7m0-7-3 7"></path></svg>Оборвать линию</button>
+          <button id="skipButton" class="button button-quiet" type="button">Пропустить</button>
+        </div>
       </div>
 
       <div class="shortcut-note">
@@ -76,8 +80,8 @@
         <span><kbd>Ctrl Z</kbd> отменить</span>
       </div>
 
-      <details class="coordinate-entry-shell">
-        <summary>Ввести координаты вручную <span id="pointCounter" class="point-counter">0 / 0</span></summary>
+      <div class="coordinate-entry-shell">
+        <div class="coordinate-entry-title"><span>Ввод координат</span><span id="pointCounter" class="point-counter">0 / 0</span></div>
         <form id="coordinateForm" class="coordinate-entry" novalidate>
           <p>Выберите из списка или введите целое число от −16 до 16.</p>
           <div class="coordinate-entry__controls">
@@ -89,7 +93,7 @@
           <datalist id="yCoordinates"></datalist>
           <p id="coordinateError" class="coordinate-error" aria-live="polite"></p>
         </form>
-      </details>
+      </div>
     </section>
 
     <section class="sky-panel" aria-label="Поле для построения созвездия">
@@ -120,9 +124,6 @@
       </div>
       <div class="sky-footer">
         <span id="penState"><i></i> Линия не начата</span>
-        <div class="field-actions">
-          <button id="liftButton" class="break-button" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h5m6 0h5M10.5 8.5l3 7m0-7-3 7"></path></svg>Оборвать линию</button>
-        </div>
       </div>
       <p id="coordinateStatus" class="sr-only" role="status" aria-live="polite"></p>
       <p id="drawingDescription" class="sr-only" aria-live="polite"></p>
@@ -148,15 +149,37 @@
 
   <dialog id="guideDialog" class="guide-dialog" aria-labelledby="guideTitle">
     <div class="guide-dialog__head">
-      <div><p class="task-type">Руководство</p><h2 id="guideTitle">Как тренироваться</h2></div>
+      <div><p class="task-type">BERETS / АСТРА</p><h2 id="guideTitle">Руководство</h2></div>
       <button id="guideClose" type="button" aria-label="Закрыть руководство">×</button>
     </div>
-    <ol>
-      <li><b>Постройте схему.</b><span>Кликайте по целым делениям сетки. Каждая следующая точка соединяется с предыдущей.</span></li>
-      <li><b>Разрывайте линию.</b><span>Если нужен новый отрезок, нажмите «Оборвать линию» у поля.</span></li>
-      <li><b>Берите подсказку по шагам.</b><span>Сначала появится точка, затем — нужное соединение. Салатовый пунктир показывает пропущенный отрезок.</span></li>
-      <li><b>Найдите α-звезду.</b><span>После верной схемы точки станут салатовыми. Нажмите на самую яркую.</span></li>
-    </ol>
+    <div class="guide-demo" role="img" aria-label="Анимация: крупный курсор нажимает Показать шаг, ставит точки Большой Медведицы и нажимает Оборвать линию">
+      <svg class="guide-demo__screen" viewBox="0 0 560 360" aria-hidden="true">
+        <defs><pattern id="demoGrid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" fill="none" stroke="rgba(255,255,255,.08)"></path></pattern></defs>
+        <rect class="demo-button demo-button--hint" x="16" y="14" width="254" height="50" rx="10"></rect>
+        <rect class="demo-button demo-button--break" x="290" y="14" width="254" height="50" rx="10"></rect>
+        <text class="demo-button-label demo-button-label--dark" x="143" y="45" text-anchor="middle">+  Показать шаг</text>
+        <text class="demo-button-label" x="417" y="45" text-anchor="middle">Оборвать линию</text>
+        <rect y="82" width="560" height="278" fill="url(#demoGrid)"></rect>
+        <g class="demo-constellation">
+          <line class="demo-edge demo-edge--1" x1="54" y1="150" x2="128" y2="168"></line>
+          <line class="demo-edge demo-edge--2" x1="128" y1="168" x2="204" y2="204"></line>
+          <line class="demo-edge demo-edge--3" x1="204" y1="204" x2="296" y2="204"></line>
+          <line class="demo-edge demo-edge--4" x1="296" y1="204" x2="296" y2="278"></line>
+          <line class="demo-edge demo-edge--5" x1="296" y1="278" x2="408" y2="278"></line>
+          <line class="demo-edge demo-edge--6" x1="408" y1="278" x2="472" y2="204"></line>
+          <line class="demo-edge demo-edge--7" x1="472" y1="204" x2="296" y2="204"></line>
+          <circle class="demo-star demo-star--1" cx="54" cy="150" r="8"></circle>
+          <circle class="demo-star demo-star--2" cx="128" cy="168" r="8"></circle>
+          <circle class="demo-star demo-star--3" cx="204" cy="204" r="8"></circle>
+          <circle class="demo-star demo-star--4" cx="296" cy="204" r="8"></circle>
+          <circle class="demo-star demo-star--5" cx="296" cy="278" r="8"></circle>
+          <circle class="demo-star demo-star--6" cx="408" cy="278" r="8"></circle>
+          <circle class="demo-star demo-star--7" cx="472" cy="204" r="8"></circle>
+        </g>
+        <g class="demo-cursor"><path d="M2 2v38l10-10 8 17 9-4-8-17h16z"></path><circle cx="4" cy="4" r="18"></circle></g>
+      </svg>
+      <span class="demo-loop-label" aria-hidden="true">Демонстрация повторяется</span>
+    </div>
     <button id="guideStart" class="button button-primary" type="button">Понятно, начать</button>
   </dialog>
 

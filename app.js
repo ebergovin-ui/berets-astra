@@ -2,7 +2,7 @@
   "use strict";
 
   const objects = window.CONSTELLATIONS;
-  const GRID = { minX: -16, maxX: 16, minY: -16, maxY: 16, left: 70, right: 930, top: 60, bottom: 620 };
+  const GRID = { minX: -16, maxX: 16, minY: -16, maxY: 16, left: 200, right: 800, top: 40, bottom: 640 };
   const SVG_NS = "http://www.w3.org/2000/svg";
 
   const $ = (selector) => document.querySelector(selector);
@@ -29,6 +29,7 @@
     undoButton: $("#undoButton"),
     clearButton: $("#clearButton"),
     answerButton: $("#answerButton"),
+    skipButton: $("#skipButton"),
     resultPanel: $("#resultPanel"),
     resultLabel: $("#resultLabel"),
     resultTitle: $("#resultTitle"),
@@ -323,15 +324,20 @@
     } else {
       snapshot();
     }
+    let duplicateEdge = false;
     if (state.active !== null && state.active !== target) {
       const key = edgeKey(state.active, target);
       if (!state.edges.some(([a, b]) => edgeKey(a, b) === key)) {
         state.edges.push([state.active, target]);
         state.newEdgeKey = key;
+      } else {
+        duplicateEdge = true;
       }
     }
     state.active = target;
-    setStatus(`Точка ${target + 1}: (${formatNumber(state.points[target].x)}; ${formatNumber(state.points[target].y)}).`, "");
+    setStatus(duplicateEdge
+      ? "Этот отрезок уже соединён и учитывается один раз."
+      : `Точка ${target + 1}: (${formatNumber(state.points[target].x)}; ${formatNumber(state.points[target].y)}).`, "");
     renderDrawing();
     maybeAutoCheck();
   }
@@ -721,7 +727,8 @@
     state.wrongIndices = new Set();
     state.newEdgeKey = null;
     elements.title.textContent = state.item.name;
-    elements.title.classList.toggle("is-long", state.item.name.length > 17);
+    elements.title.classList.toggle("is-medium", state.item.name.length > 8 && state.item.name.length <= 14);
+    elements.title.classList.toggle("is-long", state.item.name.length > 14);
     elements.type.textContent = state.item.kind === "asterism" ? "Звёздный треугольник" : state.item.source === "teacher-document" ? "Схема из задания" : "Созвездие";
     elements.round.textContent = state.deckPosition;
     elements.phaseTwoLabel.textContent = state.item.kind === "asterism" ? "Назовите вершины" : "Найдите α-звезду";
@@ -771,6 +778,7 @@
   elements.undoButton.addEventListener("click", undo);
   elements.clearButton.addEventListener("click", clearDrawing);
   elements.answerButton.addEventListener("click", revealAnswer);
+  elements.skipButton.addEventListener("click", loadNext);
   elements.nextButton.addEventListener("click", loadNext);
   elements.expandButton.addEventListener("click", toggleExpandedSky);
   elements.coordinateForm.addEventListener("submit", addCoordinateFromForm);
