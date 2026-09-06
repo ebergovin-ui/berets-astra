@@ -157,6 +157,29 @@ def indexed_scheme(lines):
     return index, points, edges
 
 
+def integerize_points(points):
+    """Place every reference star on a unique integer grid coordinate."""
+    candidates = [(x, y) for x in range(-15, 16) for y in range(-10, 11)]
+    used = set()
+    output = []
+    for point in points:
+        target = min(
+            (candidate for candidate in candidates if candidate not in used),
+            key=lambda candidate: (candidate[0] - point["x"]) ** 2 + (candidate[1] - point["y"]) ** 2,
+        )
+        used.add(target)
+        output.append({"x": target[0], "y": target[1]})
+    return output
+
+
+def star_label(item, abbr):
+    proper_name = item.get("ru") or item.get("name")
+    if proper_name:
+        return proper_name
+    designation = item.get("desig") or item.get("bayer") or item.get("flam")
+    return f"{designation} {abbr}" if designation else item.get("hip", f"звезда {abbr}")
+
+
 def main():
     lines_json = json.loads((SOURCE / "constellations.lines.json").read_text(encoding="utf-8"))
     stars_json = json.loads((SOURCE / "stars.6.json").read_text(encoding="utf-8"))
@@ -182,18 +205,30 @@ def main():
             if point not in unique_raw:
                 unique_raw.append(point)
         alpha_index = min(range(len(unique_raw)), key=lambda i: angular_distance(unique_raw[i], alpha_coord))
+        constellation_stars = [
+            (item, star_pos[hip]) for hip, item in names.items()
+            if item.get("c") == abbr and hip in star_pos
+        ]
+        point_names = []
+        for raw_point in unique_raw:
+            nearest_item, _ = min(constellation_stars, key=lambda candidate: angular_distance(raw_point, candidate[1]))
+            point_names.append(star_label(nearest_item, abbr))
         source = "astronomical"
         if abbr in SCHOOL_SCHEMES:
             scheme = SCHOOL_SCHEMES[abbr]
             point_index, points, edges = indexed_scheme(scheme["lines"])
             alpha_index = point_index[scheme["alpha"]]
+            point_names = [f"Звезда схемы №{index + 1}" for index in range(len(points))]
             source = "teacher-document"
         else:
-            # Convert the astronomical projection to the same printable grid.
+            # Convert the astronomical projection to a roomy printable grid.
             points = [
-                {"x": round((point["x"] - 50) * .28, 1), "y": round((50 - point["y"]) * .22, 1)}
+                {"x": (point["x"] - 50) * .36, "y": (50 - point["y"]) * .28}
                 for point in points
             ]
+
+        points = integerize_points(points)
+        point_names[alpha_index] = alpha_name
 
         output.append({
             "id": abbr,
@@ -202,6 +237,7 @@ def main():
             "alpha": alpha_name,
             "alphaDesignation": f"α {abbr}",
             "alphaIndex": alpha_index,
+            "pointNames": point_names,
             "source": source,
             "points": points,
             "edges": edges,
@@ -214,6 +250,7 @@ def main():
             "kind": "asterism",
             "source": "astronomical",
             "points": [{"x": 0, "y": 8}, {"x": -10, "y": 1}, {"x": 6, "y": -8}],
+            "pointNames": ["Денеб", "Вега", "Альтаир"],
             "edges": [[0, 1], [1, 2], [2, 0]],
             "vertices": [
                 {"index": 0, "star": "Денеб", "constellation": "Лебедь"},
@@ -227,6 +264,7 @@ def main():
             "kind": "asterism",
             "source": "astronomical",
             "points": [{"x": -3, "y": 8}, {"x": -9, "y": -8}, {"x": 9, "y": -2}],
+            "pointNames": ["Бетельгейзе", "Сириус", "Процион"],
             "edges": [[0, 1], [1, 2], [2, 0]],
             "vertices": [
                 {"index": 0, "star": "Бетельгейзе", "constellation": "Орион"},

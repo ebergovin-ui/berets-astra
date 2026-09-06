@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedAt": "2026-09-06T17:10:00+03:00",
-  "title": "Design System: АСТРА",
+  "title": "Design System: BERETS / АСТРА",
   "extensions": {
     "colorMeta": {
       "graphite-night": { "role": "neutral", "displayName": "Графитовая ночь", "canonical": "#0b0b0d", "tonalRamp": ["oklch(15% 0.004 285)", "oklch(25% 0.004 285)", "oklch(35% 0.004 285)", "oklch(48% 0.004 285)", "oklch(60% 0.004 285)", "oklch(72% 0.004 285)", "oklch(84% 0.004 285)", "oklch(95% 0.004 285)"] },
@@ -49,7 +49,7 @@
       "kind": "button",
       "refersTo": "button-primary",
       "description": "Главное действие текущего шага проверки.",
-      "html": "<button class=\"ds-btn-primary\">ПРОВЕРИТЬ СХЕМУ</button>",
+      "html": "<button class=\"ds-btn-primary\">+ ПОКАЗАТЬ ОДНУ ТОЧКУ</button>",
       "css": ".ds-btn-primary { min-height: 52px; border: 0; border-radius: 10px; padding: 12px 15px; color: var(--yellow-ink, #171300); background: var(--yellow, #ffd31a); box-shadow: 0 10px 30px rgba(255, 211, 26, .12); font: 800 .84rem/1.2 'Manrope Local', 'Segoe UI', sans-serif; cursor: pointer; transition: background-color .18s ease, transform .18s cubic-bezier(.16, 1, .3, 1), box-shadow .18s ease; } .ds-btn-primary:hover { background: #ffe05a; box-shadow: 0 14px 38px rgba(255, 211, 26, .2); transform: translateY(-2px); } .ds-btn-primary:active { transform: translateY(0) scale(.985); } .ds-btn-primary:focus-visible { outline: 3px solid var(--yellow, #ffd31a); outline-offset: 3px; }"
     },
     {
@@ -57,7 +57,7 @@
       "kind": "button",
       "refersTo": "button-secondary",
       "description": "Заметное вспомогательное действие, например пошаговая подсказка.",
-      "html": "<button class=\"ds-btn-secondary\">ПОДСКАЗАТЬ ШАГ</button>",
+      "html": "<button class=\"ds-btn-secondary\">ПОСТАВИТЬ КООРДИНАТУ</button>",
       "css": ".ds-btn-secondary { min-height: 52px; border: 0; border-radius: 10px; padding: 12px 15px; color: var(--text, #f5f5f2); background: var(--surface-raised, #1b1b1f); box-shadow: inset 0 0 0 1px var(--line, #34343a); font: 800 .84rem/1.2 'Manrope Local', 'Segoe UI', sans-serif; cursor: pointer; transition: background-color .18s ease, transform .18s cubic-bezier(.16, 1, .3, 1); } .ds-btn-secondary:hover { background: #25252a; transform: translateY(-2px); } .ds-btn-secondary:active { transform: translateY(0) scale(.985); } .ds-btn-secondary:focus-visible { outline: 3px solid var(--yellow, #ffd31a); outline-offset: 3px; }"
     },
     {
