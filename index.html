@@ -72,9 +72,9 @@
     <section class="sky-panel" aria-label="Поле для построения созвездия">
       <div class="sky-chrome">
         <span>Поле наблюдения</span>
-        <span id="connectionCount">0 линий</span>
+        <div><span id="connectionCount">0 линий</span><button id="expandButton" class="expand-button" type="button" aria-pressed="false">Развернуть</button></div>
       </div>
-      <div id="sky" class="sky" tabindex="0" role="application" aria-label="Интерактивная карта звёзд. Используйте Tab для перехода между звёздами и Enter для выбора.">
+      <div id="sky" class="sky" tabindex="0" role="application" aria-label="Координатная плоскость. Стрелки перемещают курсор на половину деления, Shift со стрелкой на два деления, Enter ставит или выбирает точку.">
         <svg id="skySvg" viewBox="0 0 1000 680" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
           <defs>
             <filter id="starGlow" x="-200%" y="-200%" width="400%" height="400%">
@@ -98,6 +98,8 @@
         <span id="penState"><i></i> Линия не начата</span>
         <button id="answerButton" class="text-button" type="button">Показать ответ</button>
       </div>
+      <p id="coordinateStatus" class="sr-only" role="status" aria-live="polite"></p>
+      <p id="drawingDescription" class="sr-only" aria-live="polite"></p>
     </section>
   </main>
 

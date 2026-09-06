@@ -50,6 +50,20 @@ body {
   accent-color: var(--yellow);
 }
 
+body.modal-open, body.sky-expanded { overflow: hidden; }
+
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
 button, a, .sky { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 button { font: inherit; }
 
@@ -184,6 +198,8 @@ kbd { border: 1px solid var(--line); border-bottom-color: #4a4a50; border-radius
 .sky-panel { min-width: 0; overflow: hidden; border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
 .sky-chrome, .sky-footer { min-height: 52px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: .75rem; font-weight: 700; letter-spacing: .04em; }
 .sky-chrome { border-bottom: 1px solid var(--line-soft); }
+.sky-chrome > div { display: flex; align-items: center; gap: 14px; }
+.expand-button { display: none; min-height: 40px; border: 0; border-radius: 8px; padding: 0 12px; color: var(--text); background: #29292e; font-size: .72rem; font-weight: 800; cursor: pointer; }
 .sky-footer { border-top: 1px solid var(--line-soft); }
 .sky-footer > span { display: inline-flex; align-items: center; gap: 8px; }
 .sky-footer i { width: 7px; height: 7px; border-radius: 50%; background: #5f5f64; }
@@ -258,6 +274,20 @@ kbd { border: 1px solid var(--line); border-bottom-color: #4a4a50; border-radius
   .instruction { min-height: 108px; }
   .sky-panel { display: flex; flex-direction: column; }
   .sky { min-height: 0; aspect-ratio: 1000 / 680; }
+  .expand-button { display: inline-flex; align-items: center; }
+  .grid-label { font-size: 30px; }
+  .axis-label { font-size: 32px; }
+  .point-hit { r: 64px; }
+  .point-label { font-size: 30px; }
+  .point-core { r: 11px; }
+  .sky-panel.is-expanded { position: fixed; z-index: 40; inset: 0; display: flex; border-radius: 0; }
+  .sky-panel.is-expanded .sky-chrome, .sky-panel.is-expanded .sky-footer { flex: 0 0 58px; }
+  .sky-panel.is-expanded .sky { flex: 1 1 auto; aspect-ratio: auto; overflow: auto; touch-action: pan-x pan-y; }
+  .sky-panel.is-expanded #skySvg { position: relative; width: 760px; height: 517px; max-width: none; }
+  .sky-panel.is-expanded .grid-label { font-size: 16px; }
+  .sky-panel.is-expanded .axis-label { font-size: 19px; }
+  .sky-panel.is-expanded .point-hit { r: 30px; }
+  .sky-panel.is-expanded .point-label { font-size: 16px; }
   .tool-row { grid-template-columns: 1.3fr .8fr .8fr; }
   .button { min-height: 50px; padding-inline: 10px; font-size: .77rem; }
   .shortcut-note { display: none; }

@@ -37,6 +37,11 @@
     nextButton: $("#nextButton"),
     streak: $("#streakValue"),
     mastered: $("#masteredValue"),
+    expandButton: $("#expandButton"),
+    workspace: $("#workspace"),
+    skyPanel: $(".sky-panel"),
+    coordinateStatus: $("#coordinateStatus"),
+    drawingDescription: $("#drawingDescription"),
   };
 
   const requestedId = new URLSearchParams(location.search).get("object");
@@ -58,6 +63,7 @@
     history: [],
     keyboardCursor: { x: 0, y: 0 },
     stats: readStats(),
+    previousFocus: null,
   };
 
   function shuffle(values) {
@@ -154,6 +160,7 @@
     elements.ambient.querySelector(".keyboard-cursor")?.remove();
     const pos = toSvg(state.keyboardCursor);
     elements.ambient.append(svgElement("circle", { cx: pos.x, cy: pos.y, r: 13, class: "keyboard-cursor" }));
+    elements.coordinateStatus.textContent = `Курсор: x ${formatNumber(state.keyboardCursor.x)}, y ${formatNumber(state.keyboardCursor.y)}.`;
   }
 
   function renderDrawing() {
@@ -180,6 +187,8 @@
     elements.undoButton.disabled = state.history.length === 0;
     elements.clearButton.disabled = state.points.length === 0;
     elements.liftButton.disabled = state.active === null;
+    const pointList = state.points.map((point, index) => `Точка ${index + 1}: x ${formatNumber(point.x)}, y ${formatNumber(point.y)}`).join("; ");
+    elements.drawingDescription.textContent = `${pluralize(state.points.length, "Поставлена точка", "Поставлены точки", "Поставлено точек")}. ${pointList}. ${pluralize(state.edges.length, "Соединена линия", "Соединены линии", "Соединено линий")}.`;
   }
 
   function pluralize(value, one, few, many) {
@@ -222,7 +231,9 @@
       return;
     }
     snapshot();
-    let target = nearestPoint(gridPoint);
+    // During construction, only reuse the same snapped coordinate. A fixed
+    // pixel radius would merge neighbouring grid points on narrow phones.
+    let target = state.points.findIndex((point) => Math.hypot(point.x - gridPoint.x, point.y - gridPoint.y) < .26);
     if (target < 0) {
       target = state.points.length;
       state.points.push(gridPoint);
@@ -454,6 +465,10 @@
       ? "Форма совпала, а ключевая звезда отмечена верно."
       : "Схема разобрана. Повторите её позже без подсказки, чтобы закрепить.";
     elements.answerFact.innerHTML = answerMarkup();
+    state.previousFocus = document.activeElement;
+    document.querySelector(".topbar").inert = true;
+    elements.workspace.inert = true;
+    document.body.classList.add("modal-open");
     elements.resultPanel.hidden = false;
     elements.nextButton.focus();
   }
@@ -512,15 +527,29 @@
     elements.hintButton.disabled = false;
     elements.answerButton.disabled = false;
     elements.answerButton.textContent = "Показать ответ";
+    const wasModalOpen = !elements.resultPanel.hidden;
     elements.resultPanel.hidden = true;
+    document.querySelector(".topbar").inert = false;
+    elements.workspace.inert = false;
+    document.body.classList.remove("modal-open");
     elements.answer.replaceChildren();
     elements.hints.replaceChildren();
     setStatus("Поставьте первую точку. Поворот, отражение и размер могут отличаться.", "");
     drawGrid();
     renderDrawing();
+    if (wasModalOpen) elements.sky.focus();
   }
 
-  elements.sky.addEventListener("pointerdown", (event) => {
+  function toggleExpandedSky() {
+    const expanded = !elements.skyPanel.classList.contains("is-expanded");
+    elements.skyPanel.classList.toggle("is-expanded", expanded);
+    elements.expandButton.setAttribute("aria-pressed", String(expanded));
+    elements.expandButton.textContent = expanded ? "Свернуть" : "Развернуть";
+    document.body.classList.toggle("sky-expanded", expanded);
+    if (expanded) elements.sky.focus();
+  }
+
+  elements.sky.addEventListener("click", (event) => {
     if (event.button !== undefined && event.button !== 0) return;
     addGridPoint(pointerToGrid(event));
   });
@@ -531,12 +560,20 @@
   elements.clearButton.addEventListener("click", clearDrawing);
   elements.answerButton.addEventListener("click", revealAnswer);
   elements.nextButton.addEventListener("click", loadNext);
+  elements.expandButton.addEventListener("click", toggleExpandedSky);
 
   document.addEventListener("keydown", (event) => {
-    if (!elements.resultPanel.hidden && event.key === "Escape") return;
+    if (!elements.resultPanel.hidden) {
+      if (event.key === "Tab") {
+        event.preventDefault();
+        elements.nextButton.focus();
+      }
+      return;
+    }
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") { event.preventDefault(); undo(); return; }
     if (event.key === "Escape" && state.phase === "draw") { state.active = null; renderDrawing(); return; }
-    if (event.key === "Enter" && document.activeElement !== elements.sky) { check(); return; }
+    const interactive = event.target.closest?.("button, a, input, select, textarea, [contenteditable='true']");
+    if (event.key === "Enter" && document.activeElement !== elements.sky && !interactive) { check(); return; }
     if (document.activeElement !== elements.sky) return;
     const step = event.shiftKey ? 2 : .5;
     if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Enter", " "].includes(event.key)) event.preventDefault();
