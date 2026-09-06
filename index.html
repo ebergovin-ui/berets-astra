@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0b0d">
+  <meta name="description" content="Тренажёр созвездий и альфа-звёзд по школьной астрономии">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="АСТРА | Тренажёр созвездий">
+  <meta property="og:description" content="Стройте схемы на координатной плоскости и запоминайте альфа-звёзды.">
+  <meta property="og:url" content="https://astra-constellations.ertyyy466.chatgpt.site">
+  <meta property="og:image" content="https://astra-constellations.ertyyy466.chatgpt.site/assets/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="АСТРА | Тренажёр созвездий">
+  <meta name="twitter:description" content="Стройте схемы на координатной плоскости и запоминайте альфа-звёзды.">
+  <meta name="twitter:image" content="https://astra-constellations.ertyyy466.chatgpt.site/assets/og.png">
+  <title>АСТРА | Тренажёр созвездий</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#workspace">К заданию</a>
+
+  <header class="topbar">
+    <a class="brand" href="#workspace" aria-label="АСТРА, к заданию">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span>АСТРА</span>
+    </a>
+    <div class="top-stats" aria-label="Статистика тренировки">
+      <span><b id="streakValue">0</b> серия</span>
+      <span><b id="masteredValue">0</b> освоено</span>
+    </div>
+  </header>
+
+  <main id="workspace" class="workspace">
+    <section class="brief" aria-labelledby="taskTitle">
+      <div class="task-heading">
+        <div>
+          <p id="taskType" class="task-type">Созвездие</p>
+          <h1 id="taskTitle">Лебедь</h1>
+        </div>
+        <div class="round-count"><span id="roundIndex">1</span><small>/ 27</small></div>
+      </div>
+
+      <div class="phase-strip" aria-label="Этапы задания">
+        <div class="phase is-active" data-phase="draw"><span>1</span><b>Соедините звёзды</b></div>
+        <div class="phase" data-phase="identify"><span>2</span><b id="phaseTwoLabel">Найдите α-звезду</b></div>
+      </div>
+
+      <div class="instruction" aria-live="polite">
+        <p id="instructionText">Нажимайте на звёзды по порядку. Каждое следующее нажатие добавит линию.</p>
+        <p id="statusText" class="status-text">Выберите первую звезду.</p>
+      </div>
+
+      <div class="tool-row" aria-label="Инструменты рисования">
+        <button id="liftButton" class="button button-quiet" type="button">Оторвать линию</button>
+        <button id="undoButton" class="button button-quiet" type="button">Отменить</button>
+        <button id="clearButton" class="button button-quiet" type="button">Очистить</button>
+      </div>
+
+      <div class="action-row">
+        <button id="hintButton" class="button button-secondary" type="button">Подсказать шаг</button>
+        <button id="checkButton" class="button button-primary" type="button">Проверить схему</button>
+      </div>
+
+      <div class="shortcut-note">
+        <span><kbd>Enter</kbd> проверить</span>
+        <span><kbd>Esc</kbd> оторвать линию</span>
+        <span><kbd>Ctrl Z</kbd> отменить</span>
+      </div>
+    </section>
+
+    <section class="sky-panel" aria-label="Поле для построения созвездия">
+      <div class="sky-chrome">
+        <span>Поле наблюдения</span>
+        <span id="connectionCount">0 линий</span>
+      </div>
+      <div id="sky" class="sky" tabindex="0" role="application" aria-label="Интерактивная карта звёзд. Используйте Tab для перехода между звёздами и Enter для выбора.">
+        <svg id="skySvg" viewBox="0 0 1000 680" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+          <defs>
+            <filter id="starGlow" x="-200%" y="-200%" width="400%" height="400%">
+              <feGaussianBlur stdDeviation="5" result="blur"></feGaussianBlur>
+              <feMerge><feMergeNode in="blur"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge>
+            </filter>
+            <pattern id="grid" width="52" height="52" patternUnits="userSpaceOnUse">
+              <path d="M 52 0 L 0 0 0 52" fill="none" stroke="rgba(255,255,255,.035)" stroke-width="1"></path>
+            </pattern>
+          </defs>
+          <rect width="1000" height="680" fill="url(#grid)"></rect>
+          <g id="ambientLayer"></g>
+          <g id="answerLayer"></g>
+          <g id="lineLayer"></g>
+          <g id="hintLayer"></g>
+          <g id="starLayer"></g>
+        </svg>
+        <div class="sky-vignette" aria-hidden="true"></div>
+      </div>
+      <div class="sky-footer">
+        <span id="penState"><i></i> Линия не начата</span>
+        <button id="answerButton" class="text-button" type="button">Показать ответ</button>
+      </div>
+    </section>
+  </main>
+
+  <div id="resultPanel" class="result-panel" role="dialog" aria-modal="true" aria-labelledby="resultTitle" hidden>
+    <div class="result-backdrop"></div>
+    <div class="result-content">
+      <p id="resultLabel" class="task-type">Результат</p>
+      <h2 id="resultTitle">Верно</h2>
+      <p id="resultText"></p>
+      <div id="answerFact" class="answer-fact"></div>
+      <button id="nextButton" class="button button-primary" type="button">Следующее задание</button>
+    </div>
+  </div>
+
+  <script src="constellations.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

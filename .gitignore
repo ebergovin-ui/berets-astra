@@ -1,0 +1,6 @@
+.docx-media/
+.docx-render/
+.docx-render-word/
+.source-data/
+.sites/
+*.zip

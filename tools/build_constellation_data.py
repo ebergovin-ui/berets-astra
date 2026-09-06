@@ -1,0 +1,249 @@
+"""Build the compact browser dataset used by the trainer.
+
+The geometry comes from d3-celestial's constellation line GeoJSON. Star names
+and positions are joined by HIP identifier so the alpha marker is attached to
+the same point used by the line drawing.
+"""
+
+from __future__ import annotations
+
+import json
+import math
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+SOURCE = ROOT / ".source-data"
+
+TARGETS = [
+    ("Cyg", "Лебедь", "Денеб"),
+    ("CrB", "Северная Корона", "Альфекка"),
+    ("Ori", "Орион", "Бетельгейзе"),
+    ("Gem", "Близнецы", "Кастор"),
+    ("Leo", "Лев", "Регул"),
+    ("And", "Андромеда", "Альферац"),
+    ("Lyr", "Лира", "Вега"),
+    ("Boo", "Волопас", "Арктур"),
+    ("Sco", "Скорпион", "Антарес"),
+    ("Per", "Персей", "Мирфак"),
+    ("Peg", "Пегас", "Маркаб"),
+    ("Cep", "Цефей", "Альдерамин"),
+    ("UMa", "Большая Медведица", "Дубхе"),
+    ("UMi", "Малая Медведица", "Полярная"),
+    ("Aur", "Возничий", "Капелла"),
+    ("Aql", "Орёл", "Альтаир"),
+    ("Vir", "Дева", "Спика"),
+    ("Her", "Геркулес", "Рас Альгети"),
+    ("Dra", "Дракон", "Тубан"),
+    ("Cas", "Кассиопея", "Шедар"),
+    ("CVn", "Гончие Псы", "Сердце Карла"),
+    ("CMa", "Большой Пёс", "Сириус"),
+    ("CMi", "Малый Пёс", "Процион"),
+    ("Cru", "Южный Крест", "Акрукс"),
+    ("Tau", "Телец", "Альдебаран"),
+]
+
+# Exact coordinate schemes printed in the teacher's attached Word document.
+# Each nested list is a separate stroke; a repeated point closes a loop.
+SCHOOL_SCHEMES = {
+    "Cyg": {
+        "lines": [[(-3, 4), (-2, 2), (0, 0), (2, -2)], [(5, -3), (3, 1), (-3, -1), (-7, -2)]],
+        "alpha": (-3, 4),
+    },
+    "Lyr": {
+        "lines": [[(2, 5), (1, 4), (0, 4), (-1, 3), (-1, 2), (-5, 1), (-7, -2), (-5, -1), (0, 0), (-1, 2)]],
+        "alpha": (2, 5),
+    },
+    "And": {
+        "lines": [[(-2, 9), (0, 7), (1, 4), (2, -2), (-2, -1)], [(1, 4), (-2, 5), (-4, 4)]],
+        "alpha": (-2, 9),
+    },
+    "Dra": {
+        "lines": [[(12, 6), (14, 0), (12, -1), (9, -5), (4, -7), (1, -7), (-1, -6), (-4, -2), (-4, 2), (-7, 5), (-10, 5), (-10, 2), (-8, -5), (-11, -7), (-7, -9), (-6, -7), (-8, -5)]],
+        "alpha": (-4, 2),
+    },
+    "Cep": {
+        "lines": [[(0, 5), (-1, 4), (-2, 1), (1, -1), (6, -1), (3, 2), (-1, 4)]],
+        "alpha": (-2, 1),
+    },
+    "Per": {
+        "lines": [[(-5, -3), (-2, -2), (0, -1), (2, -2), (4, -1), (5, 0), (6, 2)], [(0, -1), (1, 1), (1, 3)]],
+        "alpha": (0, -1),
+    },
+    "Cas": {
+        "lines": [[(-5, 0), (-3, 2), (-1, 0), (1, 0), (3, -2)]],
+        "alpha": (-3, 2),
+    },
+    "UMi": {
+        "lines": [[(6, 6), (3, 7), (0, 7.5), (-3, 5.5), (-5, 7), (-8, 5), (-6, 3), (-3, 5.5)]],
+        "alpha": (6, 6),
+    },
+    "UMa": {
+        "lines": [[(-15, -7), (-10, -5), (-3, -6), (6, -6), (5, -10), (-1, -10), (-3, -6)]],
+        "alpha": (6, -6),
+    },
+}
+
+
+def angular_distance(a: tuple[float, float], b: tuple[float, float]) -> float:
+    dx = abs(a[0] - b[0])
+    dx = min(dx, 360 - dx)
+    return math.hypot(dx * math.cos(math.radians((a[1] + b[1]) / 2)), a[1] - b[1])
+
+
+def compact_longitudes(values: list[float]) -> dict[float, float]:
+    wrapped = sorted({v % 360 for v in values})
+    if len(wrapped) < 2:
+        return {values[0]: 0.0}
+    gaps = []
+    for i, value in enumerate(wrapped):
+        next_value = wrapped[(i + 1) % len(wrapped)] + (360 if i == len(wrapped) - 1 else 0)
+        gaps.append((next_value - value, i))
+    _, gap_index = max(gaps)
+    start = wrapped[(gap_index + 1) % len(wrapped)]
+    return {value: (value % 360 - start) % 360 for value in values}
+
+
+def normalize(lines: list[list[list[float]]]):
+    raw_points = [tuple(point) for line in lines for point in line]
+    lon_map = compact_longitudes([p[0] for p in raw_points])
+    transformed = [(lon_map[p[0]], p[1]) for p in raw_points]
+    min_x = min(p[0] for p in transformed)
+    max_x = max(p[0] for p in transformed)
+    min_y = min(p[1] for p in transformed)
+    max_y = max(p[1] for p in transformed)
+    span_x = max(max_x - min_x, 1)
+    span_y = max(max_y - min_y, 1)
+    scale = min(76 / span_x, 70 / span_y)
+    offset_x = (100 - span_x * scale) / 2
+    offset_y = (100 - span_y * scale) / 2
+
+    index: dict[tuple[float, float], int] = {}
+    points = []
+    edges = []
+    for line in lines:
+        previous = None
+        for raw in map(tuple, line):
+            if raw not in index:
+                x = offset_x + (lon_map[raw[0]] - min_x) * scale
+                y = offset_y + (max_y - raw[1]) * scale
+                index[raw] = len(points)
+                points.append({"x": round(x, 2), "y": round(y, 2)})
+            current = index[raw]
+            if previous is not None and previous != current:
+                edge = sorted((previous, current))
+                if edge not in edges:
+                    edges.append(edge)
+            previous = current
+    return raw_points, points, edges
+
+
+def indexed_scheme(lines):
+    index = {}
+    points = []
+    edges = []
+    for line in lines:
+        previous = None
+        for raw in map(tuple, line):
+            if raw not in index:
+                index[raw] = len(points)
+                points.append({"x": raw[0], "y": raw[1]})
+            current = index[raw]
+            if previous is not None and previous != current:
+                edge = sorted((previous, current))
+                if edge not in edges:
+                    edges.append(edge)
+            previous = current
+    return index, points, edges
+
+
+def main():
+    lines_json = json.loads((SOURCE / "constellations.lines.json").read_text(encoding="utf-8"))
+    stars_json = json.loads((SOURCE / "stars.6.json").read_text(encoding="utf-8"))
+    names = json.loads((SOURCE / "starnames.json").read_text(encoding="utf-8"))
+    line_by_id = {feature["id"]: feature["geometry"]["coordinates"] for feature in lines_json["features"]}
+    star_pos = {str(feature["id"]): tuple(feature["geometry"]["coordinates"]) for feature in stars_json["features"]}
+
+    output = []
+    for abbr, title, alpha_name in TARGETS:
+        raw_points, points, edges = normalize(line_by_id[abbr])
+        alpha_candidates = [
+            (hip, item) for hip, item in names.items()
+            if item.get("c") == abbr and str(item.get("bayer", "")).startswith("α") and hip in star_pos
+        ]
+        if not alpha_candidates:
+            raise RuntimeError(f"No alpha star found for {abbr}")
+        alpha_hip, _ = alpha_candidates[0]
+        alpha_coord = star_pos[alpha_hip]
+        alpha_index = min(range(len(raw_points)), key=lambda i: angular_distance(raw_points[i], alpha_coord))
+        # raw_points can repeat; point order is first occurrence.
+        unique_raw = []
+        for point in raw_points:
+            if point not in unique_raw:
+                unique_raw.append(point)
+        alpha_index = min(range(len(unique_raw)), key=lambda i: angular_distance(unique_raw[i], alpha_coord))
+        source = "astronomical"
+        if abbr in SCHOOL_SCHEMES:
+            scheme = SCHOOL_SCHEMES[abbr]
+            point_index, points, edges = indexed_scheme(scheme["lines"])
+            alpha_index = point_index[scheme["alpha"]]
+            source = "teacher-document"
+        else:
+            # Convert the astronomical projection to the same printable grid.
+            points = [
+                {"x": round((point["x"] - 50) * .28, 1), "y": round((50 - point["y"]) * .22, 1)}
+                for point in points
+            ]
+
+        output.append({
+            "id": abbr,
+            "name": title,
+            "kind": "constellation",
+            "alpha": alpha_name,
+            "alphaDesignation": f"α {abbr}",
+            "alphaIndex": alpha_index,
+            "source": source,
+            "points": points,
+            "edges": edges,
+        })
+
+    output.extend([
+        {
+            "id": "summer-triangle",
+            "name": "Летне-осенний треугольник",
+            "kind": "asterism",
+            "source": "astronomical",
+            "points": [{"x": 0, "y": 8}, {"x": -10, "y": 1}, {"x": 6, "y": -8}],
+            "edges": [[0, 1], [1, 2], [2, 0]],
+            "vertices": [
+                {"index": 0, "star": "Денеб", "constellation": "Лебедь"},
+                {"index": 1, "star": "Вега", "constellation": "Лира"},
+                {"index": 2, "star": "Альтаир", "constellation": "Орёл"},
+            ],
+        },
+        {
+            "id": "winter-triangle",
+            "name": "Зимний треугольник",
+            "kind": "asterism",
+            "source": "astronomical",
+            "points": [{"x": -3, "y": 8}, {"x": -9, "y": -8}, {"x": 9, "y": -2}],
+            "edges": [[0, 1], [1, 2], [2, 0]],
+            "vertices": [
+                {"index": 0, "star": "Бетельгейзе", "constellation": "Орион"},
+                {"index": 1, "star": "Сириус", "constellation": "Большой Пёс"},
+                {"index": 2, "star": "Процион", "constellation": "Малый Пёс"},
+            ],
+        },
+    ])
+
+    payload = json.dumps(output, ensure_ascii=False, separators=(",", ":"))
+    (ROOT / "constellations.js").write_text(
+        "// Geometry derived from d3-celestial (MIT). See README.md.\n"
+        f"window.CONSTELLATIONS={payload};\n",
+        encoding="utf-8",
+    )
+    print(f"Wrote {len(output)} objects to constellations.js")
+
+
+if __name__ == "__main__":
+    main()
