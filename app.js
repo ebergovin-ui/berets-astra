@@ -10,6 +10,7 @@
     title: $("#taskTitle"),
     type: $("#taskType"),
     round: $("#roundIndex"),
+    roundTotal: $("#roundTotal"),
     instruction: $("#instructionText"),
     status: $("#statusText"),
     count: $("#connectionCount"),
@@ -25,7 +26,6 @@
     hints: $("#hintLayer"),
     stars: $("#starLayer"),
     hintButton: $("#hintButton"),
-    liftButton: $("#liftButton"),
     undoButton: $("#undoButton"),
     clearButton: $("#clearButton"),
     answerButton: $("#answerButton"),
@@ -49,6 +49,7 @@
     coordinateError: $("#coordinateError"),
     addCoordinateButton: $("#addCoordinateButton"),
     pointCounter: $("#pointCounter"),
+    sourceLink: $("#sourceLink"),
     feedbackToast: $("#feedbackToast"),
     feedbackTitle: $("#feedbackTitle"),
     feedbackText: $("#feedbackText"),
@@ -60,7 +61,6 @@
     demoCaption: $("#demoCaption"),
     demoCursor: $(".demo-cursor"),
     demoHintButton: $(".demo-button--hint"),
-    demoBreakButton: $(".demo-button--break"),
     demoStars: [...document.querySelectorAll(".demo-star")],
     demoEdges: [...document.querySelectorAll(".demo-edge")],
   };
@@ -77,6 +77,8 @@
     points: [],
     edges: [],
     active: null,
+    chainStart: null,
+    chainEdges: 0,
     selected: new Set(),
     hintCount: 0,
     hintPoints: new Set(),
@@ -95,11 +97,12 @@
     resultInterval: null,
     guideTimer: null,
     guideFrame: 0,
+    lastSimilarity: null,
   };
 
-  const GUIDE_POINTS = [[70, 160], [150, 140], [240, 155], [370, 155], [350, 260], [255, 260]];
+  const GUIDE_POINTS = [[240, 155], [370, 155], [350, 260], [255, 260], [150, 140], [70, 160]];
   const GUIDE_HINT = [116, 22];
-  const GUIDE_BREAK = [394, 22];
+  const SCHEMATIC_PASS_PERCENT = 85;
 
   function shuffle(values) {
     for (let i = values.length - 1; i > 0; i -= 1) {
@@ -169,9 +172,9 @@
 
   function resetGuideDemo() {
     elements.demoStars.forEach((star) => star.classList.remove("is-visible"));
+    elements.demoStars.forEach((star) => star.classList.remove("is-active"));
     elements.demoEdges.forEach((edge) => edge.classList.remove("is-visible"));
     elements.demoHintButton.classList.remove("is-demo-pressed");
-    elements.demoBreakButton.classList.remove("is-demo-pressed");
     elements.demoCursor.classList.remove("is-clicking");
     elements.demoCursor.style.transform = `translate(${GUIDE_HINT[0]}px, ${GUIDE_HINT[1]}px)`;
     elements.demoCaption.textContent = "Сначала поле пустое";
@@ -184,16 +187,19 @@
 
   function guideFrames() {
     const frames = [{ reset: true, delay: 850 }];
-    GUIDE_POINTS.forEach((point, index) => {
+    GUIDE_POINTS.slice(0, 4).forEach((point, index) => {
       frames.push({ cursor: GUIDE_HINT, label: `Шаг ${index + 1}: курсор идёт к кнопке`, delay: 520 });
       frames.push({ cursor: GUIDE_HINT, press: "hint", label: "Нажатие показывает только следующий шаг", delay: 360 });
       frames.push({ cursor: point, star: index, edge: index > 0 ? index - 1 : null, label: index === 0 ? "Появилась только первая точка" : `Появилась точка ${index + 1} и один отрезок`, delay: 780 });
     });
-    frames.push({ cursor: GUIDE_BREAK, label: "Для новой ветви курсор идёт к разрыву линии", delay: 520 });
-    frames.push({ cursor: GUIDE_BREAK, press: "break", label: "Нажатие обрывает текущую линию", delay: 480 });
-    frames.push({ cursor: GUIDE_HINT, label: "Последний шаг замыкает ковш", delay: 520 });
-    frames.push({ cursor: GUIDE_HINT, press: "hint", label: "Ещё одно нажатие показывает недостающий отрезок", delay: 360 });
-    frames.push({ cursor: GUIDE_POINTS[5], edge: 5, label: "Схема Большой Медведицы завершена", delay: 1200 });
+    frames.push({ cursor: GUIDE_HINT, press: "hint", edge: 3, label: "Следующий шаг замыкает чашу", delay: 650 });
+    frames.push({ cursor: GUIDE_POINTS[0], activate: 0, label: "Нажмите готовую вершину — она станет активной", delay: 900 });
+    GUIDE_POINTS.slice(4).forEach((point, offset) => {
+      const index = offset + 4;
+      frames.push({ cursor: GUIDE_HINT, press: "hint", label: "Подсказка открывает ещё один шаг", delay: 360 });
+      frames.push({ cursor: point, star: index, edge: index, label: `Продолжайте ветвь из выбранной вершины`, delay: 760 });
+    });
+    frames.push({ label: "Ковш завершён без кнопки разрыва", delay: 1200 });
     return frames;
   }
 
@@ -202,14 +208,18 @@
     if (state.guideFrame >= frames.length) state.guideFrame = 0;
     const frame = frames[state.guideFrame];
     elements.demoHintButton.classList.remove("is-demo-pressed");
-    elements.demoBreakButton.classList.remove("is-demo-pressed");
     elements.demoCursor.classList.remove("is-clicking");
     if (frame.reset) resetGuideDemo();
     if (frame.cursor) elements.demoCursor.style.transform = `translate(${frame.cursor[0]}px, ${frame.cursor[1]}px)`;
     if (frame.star !== undefined) elements.demoStars[frame.star]?.classList.add("is-visible");
     if (frame.edge !== null && frame.edge !== undefined) elements.demoEdges[frame.edge]?.classList.add("is-visible");
+    if (frame.activate !== undefined) {
+      elements.demoStars.forEach((star) => star.classList.remove("is-active"));
+      elements.demoStars[frame.activate]?.classList.add("is-active");
+      elements.demoCursor.classList.add("is-clicking");
+    }
     if (frame.press) {
-      (frame.press === "hint" ? elements.demoHintButton : elements.demoBreakButton).classList.add("is-demo-pressed");
+      elements.demoHintButton.classList.add("is-demo-pressed");
       void elements.demoCursor.getBoundingClientRect();
       elements.demoCursor.classList.add("is-clicking");
     }
@@ -306,7 +316,6 @@
     elements.pen.classList.toggle("is-live", state.active !== null);
     elements.undoButton.disabled = state.phase !== "draw" || state.history.length === 0;
     elements.clearButton.disabled = state.phase !== "draw" || state.points.length === 0;
-    elements.liftButton.disabled = state.phase !== "draw" || state.active === null;
     elements.pointCounter.textContent = `${state.points.length} / ${state.item?.points.length || 0}`;
     const inputDisabled = state.phase !== "draw";
     elements.coordinateX.disabled = inputDisabled;
@@ -363,7 +372,13 @@
   }
 
   function snapshot() {
-    state.history.push({ points: state.points.map((p) => ({ ...p })), edges: state.edges.map((e) => [...e]), active: state.active });
+    state.history.push({
+      points: state.points.map((p) => ({ ...p })),
+      edges: state.edges.map((e) => [...e]),
+      active: state.active,
+      chainStart: state.chainStart,
+      chainEdges: state.chainEdges,
+    });
     if (state.history.length > 100) state.history.shift();
   }
 
@@ -371,7 +386,37 @@
     state.points = snapshotState.points;
     state.edges = snapshotState.edges;
     state.active = snapshotState.active;
+    state.chainStart = snapshotState.chainStart ?? snapshotState.active;
+    state.chainEdges = snapshotState.chainEdges ?? 0;
     renderDrawing();
+  }
+
+  function hasPath(start, end) {
+    if (start === end) return true;
+    const visited = new Set([start]);
+    const queue = [start];
+    while (queue.length) {
+      const current = queue.shift();
+      for (const [a, b] of state.edges) {
+        const next = a === current ? b : b === current ? a : -1;
+        if (next < 0 || visited.has(next)) continue;
+        if (next === end) return true;
+        visited.add(next);
+        queue.push(next);
+      }
+    }
+    return false;
+  }
+
+  function isExpectedMissingUserEdge(a, b) {
+    if (state.points.length !== state.item.points.length) return false;
+    const mapping = referenceToUserMap();
+    return state.item.edges.some(([refA, refB]) => {
+      const userA = mapping[refA];
+      const userB = mapping[refB];
+      return edgeKey(userA, userB) === edgeKey(a, b)
+        && !state.edges.some(([x, y]) => edgeKey(x, y) === edgeKey(a, b));
+    });
   }
 
   function nearestPoint(gridPoint, thresholdPixels = 25) {
@@ -399,9 +444,10 @@
       return;
     }
     let target = state.points.findIndex((point) => point.x === gridPoint.x && point.y === gridPoint.y);
-    if (target < 0) {
+    const isNewPoint = target < 0;
+    if (isNewPoint) {
       if (state.points.length >= state.item.points.length) {
-        setStatus(`Для этой схемы достаточно ${state.item.points.length} точек. Соедините уже поставленные точки или отмените последнюю.`, "error");
+        setStatus(`Для этой схемы достаточно ${state.item.points.length} точек. Нажмите готовую вершину, чтобы продолжить из неё.`, "error");
         return;
       }
       snapshot();
@@ -414,19 +460,42 @@
       snapshot();
     }
     let duplicateEdge = false;
-    if (state.active !== null && state.active !== target) {
+    let selectedExisting = false;
+    let closedContour = false;
+    if (!isNewPoint && state.active !== null && state.active !== target) {
+      const shouldConnect = (target === state.chainStart && state.chainEdges >= 2)
+        || isExpectedMissingUserEdge(state.active, target);
+      if (!shouldConnect) {
+        state.active = target;
+        state.chainStart = target;
+        state.chainEdges = 0;
+        selectedExisting = true;
+      }
+    }
+    if (!selectedExisting && state.active !== null && state.active !== target) {
       const key = edgeKey(state.active, target);
       if (!state.edges.some(([a, b]) => edgeKey(a, b) === key)) {
+        closedContour = hasPath(state.active, target);
         state.edges.push([state.active, target]);
         state.newEdgeKey = key;
+        state.chainEdges += 1;
       } else {
         duplicateEdge = true;
       }
     }
-    state.active = target;
-    setStatus(duplicateEdge
-      ? "Этот отрезок уже соединён и учитывается один раз."
-      : `Точка ${target + 1}: (${formatNumber(state.points[target].x)}; ${formatNumber(state.points[target].y)}).`, "");
+    if (state.active === null || isNewPoint && state.chainStart === null) state.chainStart = target;
+    state.active = closedContour ? null : target;
+    if (closedContour) {
+      state.chainStart = null;
+      state.chainEdges = 0;
+    }
+    setStatus(
+      duplicateEdge ? "Этот отрезок уже соединён и учитывается один раз."
+        : selectedExisting ? `Точка ${target + 1} выбрана. Следующая новая точка продолжит линию отсюда.`
+          : closedContour ? "Контур замкнут. Выберите любую вершину, чтобы продолжить из неё."
+            : `Точка ${target + 1}: (${formatNumber(state.points[target].x)}; ${formatNumber(state.points[target].y)}).`,
+      "",
+    );
     renderDrawing();
     maybeAutoCheck();
   }
@@ -610,22 +679,58 @@
     return Math.sqrt(a.reduce((sum, value, index) => sum + (value - b[index]) ** 2, 0) / Math.max(a.length, 1));
   }
 
+  function clampPercent(value) {
+    return Math.max(0, Math.min(100, Math.round(value)));
+  }
+
+  function isCoordinateTask() {
+    return state.item?.source === "teacher-document";
+  }
+
+  function evaluateCoordinateShape() {
+    const referencePointByKey = new Map(state.item.points.map((point, index) => [`${point.x},${point.y}`, index]));
+    const userToReference = state.points.map((point) => referencePointByKey.get(`${point.x},${point.y}`) ?? -1);
+    const matchingPoints = userToReference.filter((index) => index >= 0).length;
+    const referenceEdges = new Set(state.item.edges.map(([a, b]) => edgeKey(a, b)));
+    const matchingEdges = state.edges.filter(([a, b]) => {
+      const refA = userToReference[a];
+      const refB = userToReference[b];
+      return refA >= 0 && refB >= 0 && referenceEdges.has(edgeKey(refA, refB));
+    }).length;
+    const pointRatio = matchingPoints / Math.max(state.item.points.length, 1);
+    const edgeRatio = matchingEdges / Math.max(state.item.edges.length, 1);
+    const similarity = clampPercent((pointRatio * .65 + edgeRatio * .35) * 100);
+    return similarity === 100
+      ? { ok: true, similarity }
+      : { ok: false, similarity, reason: `Совпало ${similarity}% координатной схемы. В этом задании положение, масштаб и координаты должны быть точными.` };
+  }
+
   function evaluateShape() {
     const reference = state.item;
     if (state.points.length !== reference.points.length || state.edges.length !== reference.edges.length) {
-      return { ok: false, reason: `Нужно ${reference.points.length} точек и ${reference.edges.length} отрезков. Сейчас ${state.points.length} и ${state.edges.length}.` };
+      return { ok: false, similarity: 0, reason: `Нужно ${reference.points.length} точек и ${reference.edges.length} отрезков. Сейчас ${state.points.length} и ${state.edges.length}.` };
     }
+    if (isCoordinateTask()) return evaluateCoordinateShape();
     const userDegrees = degreeSequence(state.points.length, state.edges).sort((a, b) => a - b);
     const refDegrees = degreeSequence(reference.points.length, reference.edges).sort((a, b) => a - b);
-    if (userDegrees.some((value, index) => value !== refDegrees[index])) return { ok: false, reason: "Связи между точками отличаются от эталона." };
+    const matchingDegrees = userDegrees.filter((value, index) => value === refDegrees[index]).length;
 
     const edgeError = rmse(normalized(edgeLengths(state.points, state.edges)), normalized(edgeLengths(reference.points, reference.edges)));
     const distanceError = rmse(normalized(pairDistances(state.points)), normalized(pairDistances(reference.points)));
     const angleError = rmse(angleCosines(state.points, state.edges), angleCosines(reference.points, reference.edges));
     const score = edgeError * .45 + distanceError * .35 + angleError * .2;
-    return score <= .24
-      ? { ok: true, score }
-      : { ok: false, reason: "Количество точек верное, но пропорции или углы заметно отличаются. Поворот и размер не влияют на проверку." };
+    let similarity = clampPercent(100 - (score / 1.6) * 100);
+    if (matchingDegrees !== refDegrees.length) similarity = Math.min(84, clampPercent(similarity * .72 + (matchingDegrees / refDegrees.length) * 28));
+    return similarity >= SCHEMATIC_PASS_PERCENT && matchingDegrees === refDegrees.length
+      ? { ok: true, score, similarity }
+      : {
+          ok: false,
+          score,
+          similarity,
+          reason: matchingDegrees === refDegrees.length
+            ? `Сходство ${similarity}%. Для зачёта нужно не меньше ${SCHEMATIC_PASS_PERCENT}%. Подправьте пропорции или углы.`
+            : `Сходство ${similarity}%. Связи между точками отличаются от схемы Wikipedia.`,
+        };
   }
 
   function maybeAutoCheck() {
@@ -636,10 +741,11 @@
 
   function checkShape() {
     const result = evaluateShape();
+    state.lastSimilarity = result.similarity;
     if (!result.ok) {
       state.failedChecks += 1;
       setStatus(`${result.reason} Исправьте последнюю точку или очистите поле.`, "error");
-      showToast("Схема пока не совпала", result.reason, "error", 4200);
+      showToast(isCoordinateTask() ? "Координаты пока не совпали" : `Сходство ${result.similarity}%`, result.reason, "error", 4200);
       return;
     }
     enterIdentifyPhase();
@@ -648,10 +754,11 @@
   function enterIdentifyPhase() {
     state.phase = "identify";
     state.active = null;
+    state.chainStart = null;
+    state.chainEdges = 0;
     elements.phases[0].className = "phase is-complete";
     elements.phases[1].className = "phase is-active";
     elements.hintButton.disabled = true;
-    elements.liftButton.disabled = true;
     elements.undoButton.disabled = true;
     elements.clearButton.disabled = true;
     elements.instruction.textContent = state.item.kind === "asterism"
@@ -659,7 +766,8 @@
       : "Выберите α-звезду — результат проверится сразу.";
     setStatus(state.item.kind === "asterism" ? "Выбрано вершин: 0 из 3." : "Выберите одну светящуюся точку.", "success");
     renderDrawing();
-    showToast("Созвездие построено", state.item.kind === "asterism" ? "Теперь отметьте три вершины." : "Теперь выберите α-звезду.", "success", 4200);
+    const successTitle = isCoordinateTask() ? "Координаты совпали" : `Сходство ${state.lastSimilarity}%`;
+    showToast(successTitle, state.item.kind === "asterism" ? "Теперь отметьте три вершины." : "Форма зачтена. Теперь выберите α-звезду.", "success", 4200);
   }
 
   function toggleIdentification(index) {
@@ -745,9 +853,10 @@
     saveStats();
     elements.resultLabel.textContent = clean ? "Без подсказок" : "Задание завершено";
     elements.resultTitle.textContent = clean ? "Точно" : "Готово";
+    const similarityNote = !isCoordinateTask() && Number.isFinite(state.lastSimilarity) ? ` Сходство формы — ${state.lastSimilarity}%.` : "";
     elements.resultText.textContent = clean
-      ? "Форма совпала, а ключевая звезда отмечена верно."
-      : "Схема разобрана. Повторите её позже без подсказки, чтобы закрепить.";
+      ? `Форма совпала, а ключевая звезда отмечена верно.${similarityNote}`
+      : `Схема разобрана. Повторите её позже без подсказки, чтобы закрепить.${similarityNote}`;
     renderAnswerFact();
     state.previousFocus = document.activeElement;
     document.querySelector(".topbar").inert = true;
@@ -772,7 +881,9 @@
     elements.hints.replaceChildren();
     elements.answerButton.textContent = "Ответ показан";
     elements.answerButton.disabled = true;
-    setStatus("Эталон показан серым пунктиром. Его можно перенести, повернуть или отразить.", "");
+    setStatus(isCoordinateTask()
+      ? "Эталон показан серым пунктиром. Для этого задания повторите его в тех же координатах."
+      : "Эталон показан серым пунктиром. Его можно перенести, повернуть или отразить.", "");
   }
 
   function undo() {
@@ -786,6 +897,8 @@
     state.points = [];
     state.edges = [];
     state.active = null;
+    state.chainStart = null;
+    state.chainEdges = 0;
     setStatus("Поле очищено. Поставьте первую точку.", "");
     renderDrawing();
   }
@@ -805,6 +918,8 @@
     state.points = [];
     state.edges = [];
     state.active = null;
+    state.chainStart = null;
+    state.chainEdges = 0;
     state.selected = new Set();
     state.hintCount = 0;
     state.hintPoints = new Set();
@@ -815,16 +930,26 @@
     state.keyboardCursor = { x: 0, y: 0 };
     state.wrongIndices = new Set();
     state.newEdgeKey = null;
+    state.lastSimilarity = null;
     elements.title.textContent = state.item.name;
     elements.title.classList.toggle("is-medium", state.item.name.length > 8 && state.item.name.length <= 14);
     elements.title.classList.toggle("is-long", state.item.name.length > 14);
     fitTaskTitle();
-    elements.type.textContent = state.item.kind === "asterism" ? "Звёздный треугольник" : state.item.source === "teacher-document" ? "Схема из задания" : "Созвездие";
+    const coordinateTask = isCoordinateTask();
+    elements.type.textContent = coordinateTask ? "По координатам · точное совпадение" : `Схематично · зачёт от ${SCHEMATIC_PASS_PERCENT}%`;
+    elements.type.classList.toggle("is-coordinate", coordinateTask);
+    elements.sourceLink.hidden = coordinateTask;
+    if (!coordinateTask) {
+      elements.sourceLink.href = state.item.sourceUrl || "https://commons.wikimedia.org/";
+      elements.sourceLink.textContent = state.item.kind === "asterism" ? "Источник: Wikipedia" : "Схема: Wikipedia / Wikimedia";
+    }
     elements.round.textContent = state.deckPosition;
     elements.phaseTwoLabel.textContent = state.item.kind === "asterism" ? "Назовите вершины" : "Найдите α-звезду";
     elements.phases[0].className = "phase is-active";
     elements.phases[1].className = "phase";
-    elements.instruction.textContent = "Ставьте точки на координатной сетке. Следующее нажатие автоматически соединит их отрезком.";
+    elements.instruction.textContent = coordinateTask
+      ? "Постройте схему точно по целым координатам из задания. Последняя точка остаётся активной."
+      : `Передайте форму созвездия. Поворот, отражение и масштаб свободны — зачёт от ${SCHEMATIC_PASS_PERCENT}%.`;
     elements.hintButton.disabled = false;
     elements.hintButton.replaceChildren();
     const hintPlus = document.createElement("span");
@@ -844,7 +969,9 @@
     document.body.classList.remove("modal-open");
     elements.answer.replaceChildren();
     elements.hints.replaceChildren();
-    setStatus("Поставьте первую точку на целой координате. Поворот, отражение и размер могут отличаться.", "");
+    setStatus(coordinateTask
+      ? "Поставьте первую точку. Здесь координаты и масштаб должны совпасть с эталоном."
+      : "Поставьте первую точку. Нажмите готовую вершину, чтобы продолжить новую ветвь из неё.", "");
     drawGrid();
     renderDrawing();
     if (wasModalOpen) elements.sky.focus();
@@ -864,7 +991,6 @@
     addGridPoint(pointerToGrid(event));
   });
   elements.hintButton.addEventListener("click", showHint);
-  elements.liftButton.addEventListener("click", () => { state.active = null; setStatus("Линия оторвана. Выберите начало следующего отрезка.", ""); renderDrawing(); });
   elements.undoButton.addEventListener("click", undo);
   elements.clearButton.addEventListener("click", clearDrawing);
   elements.answerButton.addEventListener("click", revealAnswer);
@@ -891,7 +1017,14 @@
       return;
     }
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") { event.preventDefault(); undo(); return; }
-    if (event.key === "Escape" && state.phase === "draw") { state.active = null; renderDrawing(); return; }
+    if (event.key === "Escape" && state.phase === "draw") {
+      state.active = null;
+      state.chainStart = null;
+      state.chainEdges = 0;
+      setStatus("Выбор снят. Нажмите любую готовую вершину, чтобы продолжить из неё.", "");
+      renderDrawing();
+      return;
+    }
     if (document.activeElement !== elements.sky) return;
     const step = event.shiftKey ? 2 : 1;
     if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Enter", " "].includes(event.key)) event.preventDefault();
@@ -904,6 +1037,7 @@
   });
 
   populateCoordinateLists();
+  elements.roundTotal.textContent = objects.length;
   saveStats();
   loadNext();
 })();

@@ -94,13 +94,22 @@ SCHOOL_SCHEMES = {
     },
 }
 
-# Verified Western line figures from Stellarium's public sky-culture dataset.
-# HIP identifiers preserve real star placement; only peripheral decorative paths
-# are omitted where a compact classroom figure is more legible.
-STELLARIUM_SCHEMES = {
+# Compact classroom figures traced from the green stick figures on the
+# constellation-map images used by Wikipedia and hosted on Wikimedia Commons.
+# HIP identifiers keep the traced vertices attached to the correct real stars.
+WIKIMEDIA_SCHEMES = {
+    "Cyg": [[102098, 100453, 95947], [97165, 100453, 102488]],
+    "Lyr": [[91262, 91971, 92420, 93194, 92791, 91971]],
+    "And": [[677, 3092, 5447, 9640], [5447, 4436]],
+    "Dra": [[87833, 85670, 85819, 87585, 87833], [85670, 83895, 80331, 78527, 75458, 68756, 61281, 56211]],
+    "Cep": [[105199, 106032, 116727, 112724, 109492, 105199]],
+    "Per": [[14328, 15863, 17358, 18532, 18614], [15863, 14576, 17448], [15863, 13268]],
+    "Cas": [[746, 3179, 4427, 6686, 8886]],
+    "UMi": [[11767, 85822, 82080, 77055, 79822, 75097, 72607, 77055]],
+    "UMa": [[67301, 65378, 62956, 59774, 58001, 53910, 54061, 59774]],
     "CrB": [[76127, 75695, 76267, 76952, 77512, 78159, 78493]],
     "Ori": [[27989, 25336, 24436, 27366, 27989], [26727, 26311, 25930]],
-    "Gem": [[36850, 34693, 32246, 30343, 28734], [37826, 36962, 35550, 34088, 31681], [34693, 35550], [32246, 33018], [36962, 37740]],
+    "Gem": [[36850, 34693, 32246, 30343, 28734], [37826, 36962, 35550, 34088, 31681], [34693, 35550]],
     "Leo": [[57632, 54879, 49669, 49583, 50583, 54872, 57632], [50583, 50335, 48455, 47908], [54872, 54879]],
     "Boo": [[71795, 69673, 72105, 74666, 73555, 71075, 71053, 69673, 67927, 67459]],
     "Sco": [[85927, 86670, 87073, 86228, 84143, 82671, 82514, 82396, 81266, 80763, 78401], [80763, 78265], [80763, 78820]],
@@ -108,12 +117,40 @@ STELLARIUM_SCHEMES = {
     "Aur": [[28380, 28360, 24608, 23453, 23015], [25428, 23015], [25428, 28380]],
     "Aql": [[98036, 97649, 97278], [97649, 95501, 97804, 99473], [95501, 93747, 93244], [95501, 93805]],
     "Vir": [[57380, 60030, 61941, 65474, 69427, 69701, 71957], [65474, 66249, 68520, 72220], [66249, 63090, 63608], [63090, 61941]],
-    "Her": [[81833, 81693, 83207, 84380, 81833], [81833, 81126, 79992, 77760], [84380, 84606, 85112, 87808, 86414], [81693, 80816, 80170], [83207, 84379, 85693, 86974], [80816, 84345]],
+    "Her": [[81833, 81693, 83207, 84380, 81833], [81833, 81126, 79992, 77760], [84380, 84606, 85112, 87808], [81693, 84345], [83207, 84379]],
     "CVn": [[61317, 63125]],
-    "CMa": [[33160, 34045, 33347, 32349, 33977, 34444, 35037, 35904], [33579, 33856, 34444], [32349, 30324], [30122, 33579], [33347, 33160]],
+    "CMa": [[33160, 34045, 33347, 32349, 33977, 34444, 35037, 35904], [33579, 33856, 34444], [32349, 30324]],
     "CMi": [[37279, 36188]],
     "Cru": [[61084, 60718], [62434, 59747]],
     "Tau": [[25428, 21881, 20889], [21421, 26451], [21421, 20894, 20205], [20889, 20648, 20455], [20205, 20455]],
+}
+
+WIKIMEDIA_SOURCE_URLS = {
+    "Cyg": "https://commons.wikimedia.org/wiki/File:Cygnus_constellation_map.svg",
+    "Lyr": "https://commons.wikimedia.org/wiki/File:Lyra_constellation_map.svg",
+    "And": "https://commons.wikimedia.org/wiki/File:Andromeda_constellation_map.svg",
+    "Dra": "https://commons.wikimedia.org/wiki/File:Draco_constellation_map.svg",
+    "Cep": "https://commons.wikimedia.org/wiki/File:Cepheus_constellation_map.svg",
+    "Per": "https://commons.wikimedia.org/wiki/File:Perseus_constellation_map.svg",
+    "Cas": "https://commons.wikimedia.org/wiki/File:Cassiopeia_constellation_map.svg",
+    "UMi": "https://commons.wikimedia.org/wiki/File:Ursa_Minor_constellation_map.svg",
+    "UMa": "https://commons.wikimedia.org/wiki/File:Ursa_Major_constellation_map.svg",
+    "CrB": "https://commons.wikimedia.org/wiki/File:Corona_Borealis_constellation_map.svg",
+    "Ori": "https://commons.wikimedia.org/wiki/File:Orion_constellation_map.svg",
+    "Gem": "https://commons.wikimedia.org/wiki/File:Gemini_constellation_map.svg",
+    "Leo": "https://commons.wikimedia.org/wiki/File:Leo_constellation_map.svg",
+    "Boo": "https://commons.wikimedia.org/wiki/File:Bo%C3%B6tes_constellation_map.svg",
+    "Sco": "https://commons.wikimedia.org/wiki/File:Scorpius_constellation_map.svg",
+    "Peg": "https://commons.wikimedia.org/wiki/File:Pegasus_constellation_map.svg",
+    "Aur": "https://commons.wikimedia.org/wiki/File:Auriga_constellation_map.svg",
+    "Aql": "https://commons.wikimedia.org/wiki/File:Aquila_constellation_map.svg",
+    "Vir": "https://commons.wikimedia.org/wiki/File:Virgo_constellation_map.svg",
+    "Her": "https://commons.wikimedia.org/wiki/File:Hercules_constellation_map.svg",
+    "CVn": "https://commons.wikimedia.org/wiki/File:Canes_Venatici_constellation_map.svg",
+    "CMa": "https://commons.wikimedia.org/wiki/File:Canis_Major_constellation_map.svg",
+    "CMi": "https://commons.wikimedia.org/wiki/File:Canis_Minor_constellation_map.svg",
+    "Cru": "https://commons.wikimedia.org/wiki/File:Crux_constellation_map.svg",
+    "Tau": "https://commons.wikimedia.org/wiki/File:Taurus_constellation_map.svg",
 }
 
 
@@ -189,7 +226,7 @@ def indexed_scheme(lines):
     return index, points, edges
 
 
-def stellarium_scheme(paths, star_pos):
+def wikimedia_scheme(paths, star_pos):
     coordinate_lines = []
     for path in paths:
         missing = [hip for hip in path if str(hip) not in star_pos]
@@ -247,15 +284,14 @@ def star_label(item, abbr):
 
 
 def main():
-    lines_json = json.loads((SOURCE / "constellations.lines.json").read_text(encoding="utf-8"))
     stars_json = json.loads((SOURCE / "stars.6.json").read_text(encoding="utf-8"))
     names = json.loads((SOURCE / "starnames.json").read_text(encoding="utf-8"))
-    line_by_id = {feature["id"]: feature["geometry"]["coordinates"] for feature in lines_json["features"]}
     star_pos = {str(feature["id"]): tuple(feature["geometry"]["coordinates"]) for feature in stars_json["features"]}
 
     output = []
+    target_meta = {}
     for abbr, title, alpha_name in TARGETS:
-        raw_points, points, edges = normalize(line_by_id[abbr])
+        target_meta[abbr] = (title, alpha_name)
         alpha_candidates = [
             (hip, item) for hip, item in names.items()
             if item.get("c") == abbr and str(item.get("bayer", "")).startswith("α") and hip in star_pos
@@ -264,47 +300,36 @@ def main():
             raise RuntimeError(f"No alpha star found for {abbr}")
         alpha_hip, _ = alpha_candidates[0]
         alpha_coord = star_pos[alpha_hip]
-        alpha_index = min(range(len(raw_points)), key=lambda i: angular_distance(raw_points[i], alpha_coord))
-        # raw_points can repeat; point order is first occurrence.
-        unique_raw = []
-        for point in raw_points:
-            if point not in unique_raw:
-                unique_raw.append(point)
-        alpha_index = min(range(len(unique_raw)), key=lambda i: angular_distance(unique_raw[i], alpha_coord))
-        constellation_stars = [
-            (item, star_pos[hip]) for hip, item in names.items()
-            if item.get("c") == abbr and hip in star_pos
-        ]
-        point_names = []
-        for raw_point in unique_raw:
-            nearest_item, _ = min(constellation_stars, key=lambda candidate: angular_distance(raw_point, candidate[1]))
-            point_names.append(star_label(nearest_item, abbr))
-        source = "astronomical"
-        if abbr in SCHOOL_SCHEMES:
-            scheme = SCHOOL_SCHEMES[abbr]
-            point_index, points, edges = indexed_scheme(scheme["lines"])
-            alpha_index = point_index[scheme["alpha"]]
-            point_names = [f"Звезда схемы №{index + 1}" for index in range(len(points))]
-            for coordinate, star_name in scheme.get("names", {}).items():
-                point_names[point_index[coordinate]] = star_name
-            source = "teacher-document"
-        elif abbr in STELLARIUM_SCHEMES:
-            hips, points, edges = stellarium_scheme(STELLARIUM_SCHEMES[abbr], star_pos)
-            alpha_index = min(
-                range(len(hips)),
-                key=lambda index: angular_distance(star_pos[str(hips[index])], alpha_coord),
-            )
-            point_names = [star_label(names.get(str(hip), {"hip": hip}), abbr) for hip in hips]
-            source = "stellarium-western"
-        else:
-            # Convert the astronomical projection to a roomy printable grid.
-            points = [
-                {"x": (point["x"] - 50) * .36, "y": (50 - point["y"]) * .28}
-                for point in points
-            ]
+        if abbr not in WIKIMEDIA_SCHEMES:
+            raise RuntimeError(f"Missing Wikipedia/Wikimedia schematic figure for {abbr}")
+        hips, points, edges = wikimedia_scheme(WIKIMEDIA_SCHEMES[abbr], star_pos)
+        alpha_index = min(
+            range(len(hips)),
+            key=lambda index: angular_distance(star_pos[str(hips[index])], alpha_coord),
+        )
+        point_names = [star_label(names.get(str(hip), {"hip": hip}), abbr) for hip in hips]
 
         if abbr == "Tau":
-            points = fit_points(rotate_points(points, 45))
+            # A wide, immediately recognisable Taurus: Hyades V and two horns.
+            points = [
+                {"x": -13, "y": 11}, {"x": -8, "y": 5}, {"x": -3, "y": 1},
+                {"x": 0, "y": 0}, {"x": 13, "y": 9}, {"x": 2, "y": -3},
+                {"x": 0, "y": -6}, {"x": -2, "y": -3}, {"x": -4, "y": -6},
+            ]
+        elif abbr == "UMa":
+            # The familiar seven-star Big Dipper shown on the Wikipedia map.
+            points = [
+                {"x": -14, "y": 3}, {"x": -9, "y": 5}, {"x": -4, "y": 4},
+                {"x": 1, "y": 2}, {"x": 2, "y": -5}, {"x": 8, "y": -5},
+                {"x": 9, "y": 2},
+            ]
+        elif abbr == "UMi":
+            # The seven-star Little Dipper, with Polaris at the handle tip.
+            points = [
+                {"x": -14, "y": 5}, {"x": -9, "y": 3}, {"x": -4, "y": 1},
+                {"x": 1, "y": 0}, {"x": 2, "y": -5}, {"x": 8, "y": -4},
+                {"x": 8, "y": 2},
+            ]
         points = integerize_points(points)
         point_names[alpha_index] = alpha_name
 
@@ -317,7 +342,8 @@ def main():
             "alphaScientific": f"α {GENITIVE[abbr]}",
             "alphaIndex": alpha_index,
             "pointNames": point_names,
-            "source": source,
+            "source": "wikipedia-wikimedia",
+            "sourceUrl": WIKIMEDIA_SOURCE_URLS.get(abbr),
             "points": points,
             "edges": edges,
         })
@@ -328,6 +354,7 @@ def main():
             "name": "Летне-осенний треугольник",
             "kind": "asterism",
             "source": "astronomical",
+            "sourceUrl": "https://en.wikipedia.org/wiki/Summer_Triangle",
             "points": [{"x": 0, "y": 8}, {"x": -10, "y": 1}, {"x": 6, "y": -8}],
             "pointNames": ["Денеб", "Вега", "Альтаир"],
             "edges": [[0, 1], [1, 2], [2, 0]],
@@ -342,6 +369,7 @@ def main():
             "name": "Зимний треугольник",
             "kind": "asterism",
             "source": "astronomical",
+            "sourceUrl": "https://en.wikipedia.org/wiki/Winter_Triangle",
             "points": [{"x": -3, "y": 8}, {"x": -9, "y": -8}, {"x": 9, "y": -2}],
             "pointNames": ["Бетельгейзе", "Сириус", "Процион"],
             "edges": [[0, 1], [1, 2], [2, 0]],
@@ -353,9 +381,33 @@ def main():
         },
     ])
 
+    # The nine teacher figures also return as separate exact-coordinate tasks.
+    # They are mixed into the same random deck rather than exposed as a mode.
+    for abbr, scheme in SCHOOL_SCHEMES.items():
+        title, alpha_name = target_meta[abbr]
+        point_index, points, edges = indexed_scheme(scheme["lines"])
+        alpha_index = point_index[scheme["alpha"]]
+        point_names = [f"Звезда схемы №{index + 1}" for index in range(len(points))]
+        for coordinate, star_name in scheme.get("names", {}).items():
+            point_names[point_index[coordinate]] = star_name
+        output.append({
+            "id": f"{abbr}-coordinates",
+            "name": title,
+            "kind": "constellation",
+            "alpha": alpha_name,
+            "alphaDesignation": f"α {abbr}",
+            "alphaScientific": f"α {GENITIVE[abbr]}",
+            "alphaIndex": alpha_index,
+            "pointNames": point_names,
+            "source": "teacher-document",
+            "sourceUrl": None,
+            "points": integerize_points(points),
+            "edges": edges,
+        })
+
     payload = json.dumps(output, ensure_ascii=False, separators=(",", ":"))
     (ROOT / "constellations.js").write_text(
-        "// Geometry uses the teacher document and Stellarium Western line figures. See README.md.\n"
+        "// Geometry uses the teacher document and Wikipedia/Wikimedia constellation maps. See README.md.\n"
         f"window.CONSTELLATIONS={payload};\n",
         encoding="utf-8",
     )
