@@ -66,6 +66,8 @@
         <button id="clearButton" class="button button-quiet" type="button">Очистить</button>
       </div>
 
+      <button id="doneButton" class="button button-done" type="button">Готово — проверить</button>
+
       <div class="action-row">
         <button id="hintButton" class="button button-hint" type="button"><span aria-hidden="true">+</span> Показать шаг</button>
         <button id="answerButton" class="button button-hint button-answer" type="button">Показать ответ</button>
@@ -148,11 +150,11 @@
       <div><p class="task-type">BERETS / АСТРА</p><h2 id="guideTitle">Руководство</h2></div>
       <button id="guideClose" type="button" aria-label="Закрыть руководство">×</button>
     </div>
-    <div class="guide-demo" role="img" aria-label="Анимация: подсказки по одному шагу строят ковш, затем готовая вершина выбирается для новой ветви">
+    <div class="guide-demo" role="img" aria-label="Анимация: пользователь строит созвездие, выбирает уже поставленную вершину, продолжает из неё новую ветвь и нажимает Готово">
       <svg class="guide-demo__screen" viewBox="0 0 560 360" aria-hidden="true">
         <defs><pattern id="demoGrid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" fill="none" stroke="rgba(255,255,255,.08)"></path></pattern></defs>
-        <rect class="demo-button demo-button--hint" x="16" y="14" width="254" height="50" rx="10"></rect>
-        <text class="demo-button-label demo-button-label--dark" x="143" y="45" text-anchor="middle">+  Показать шаг</text>
+        <rect class="demo-button demo-button--done" x="16" y="14" width="254" height="50" rx="10"></rect>
+        <text class="demo-button-label demo-button-label--dark" x="143" y="45" text-anchor="middle">Готово — проверить</text>
         <text class="demo-score-label" x="528" y="45" text-anchor="end">ЗАЧЁТ ≥ 85%</text>
         <rect y="82" width="560" height="278" fill="url(#demoGrid)"></rect>
         <g class="demo-constellation">
@@ -177,6 +179,7 @@
   </dialog>
 
   <script src="constellations.js"></script>
+  <script src="shape-matcher.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

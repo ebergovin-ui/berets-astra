@@ -199,6 +199,7 @@ h2 { font-size: clamp(2.2rem, 5vw, 4.5rem); }
 .coordinate-error { min-height: 0; margin: 7px 0 0; color: var(--danger); font-size: .7rem; font-weight: 700; }
 .coordinate-error:empty { display: none; }
 .tool-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.button-done { width: 100%; margin-top: 10px; color: #101408; background: var(--success); box-shadow: 0 12px 34px rgba(199, 255, 94, .16); }
 .action-row { margin-top: 10px; display: grid; gap: 8px; }
 .action-row__minor { display: grid; grid-template-columns: 1fr; gap: 8px; }
 
@@ -320,7 +321,7 @@ kbd { border: 1px solid var(--line); border-bottom-color: #4a4a50; border-radius
 .guide-demo { margin: 22px 0 16px; overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: #09090b; }
 .guide-demo__screen { display: block; width: 100%; height: auto; }
 .demo-button { fill: #242429; stroke: #3d3d44; stroke-width: 1; }
-.demo-button--hint { fill: var(--yellow); stroke: var(--yellow); }
+.demo-button--done { fill: var(--success); stroke: var(--success); }
 .demo-button.is-demo-pressed { filter: brightness(1.2); }
 .demo-button-label { fill: var(--text); font: 800 14px "Manrope Local", sans-serif; }
 .demo-button-label--dark { fill: var(--yellow-ink); }
@@ -351,7 +352,7 @@ kbd { border: 1px solid var(--line); border-bottom-color: #4a4a50; border-radius
   .workspace { grid-template-columns: 1fr; align-items: start; }
   .brief { max-width: none; display: grid; grid-template-columns: minmax(270px, .85fr) 1.15fr; column-gap: 34px; }
   .task-heading, .phase-strip { grid-column: 1; }
-  .instruction, .coordinate-entry-shell, .tool-row, .action-row, .shortcut-note { grid-column: 2; }
+  .instruction, .coordinate-entry-shell, .tool-row, .button-done, .action-row, .shortcut-note { grid-column: 2; }
   .instruction { grid-row: 1; align-self: end; }
   .tool-row { align-self: end; }
   .sky-panel { grid-row: 2; }

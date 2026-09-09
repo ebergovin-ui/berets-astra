@@ -28,6 +28,7 @@
     hintButton: $("#hintButton"),
     undoButton: $("#undoButton"),
     clearButton: $("#clearButton"),
+    doneButton: $("#doneButton"),
     answerButton: $("#answerButton"),
     skipButton: $("#skipButton"),
     resultPanel: $("#resultPanel"),
@@ -60,7 +61,7 @@
     guideStart: $("#guideStart"),
     demoCaption: $("#demoCaption"),
     demoCursor: $(".demo-cursor"),
-    demoHintButton: $(".demo-button--hint"),
+    demoActionButton: $(".demo-button--done"),
     demoStars: [...document.querySelectorAll(".demo-star")],
     demoEdges: [...document.querySelectorAll(".demo-edge")],
   };
@@ -79,6 +80,7 @@
     active: null,
     chainStart: null,
     chainEdges: 0,
+    branchArmed: false,
     selected: new Set(),
     hintCount: 0,
     hintPoints: new Set(),
@@ -98,10 +100,11 @@
     guideTimer: null,
     guideFrame: 0,
     lastSimilarity: null,
+    shapeMapping: null,
   };
 
   const GUIDE_POINTS = [[240, 155], [370, 155], [350, 260], [255, 260], [150, 140], [70, 160]];
-  const GUIDE_HINT = [116, 22];
+  const GUIDE_DONE = [116, 22];
   const SCHEMATIC_PASS_PERCENT = 85;
 
   function shuffle(values) {
@@ -174,10 +177,10 @@
     elements.demoStars.forEach((star) => star.classList.remove("is-visible"));
     elements.demoStars.forEach((star) => star.classList.remove("is-active"));
     elements.demoEdges.forEach((edge) => edge.classList.remove("is-visible"));
-    elements.demoHintButton.classList.remove("is-demo-pressed");
+    elements.demoActionButton.classList.remove("is-demo-pressed");
     elements.demoCursor.classList.remove("is-clicking");
-    elements.demoCursor.style.transform = `translate(${GUIDE_HINT[0]}px, ${GUIDE_HINT[1]}px)`;
-    elements.demoCaption.textContent = "Сначала поле пустое";
+    elements.demoCursor.style.transform = `translate(${GUIDE_POINTS[0][0]}px, ${GUIDE_POINTS[0][1]}px)`;
+    elements.demoCaption.textContent = "Сначала поставьте первую точку";
   }
 
   function stopGuideDemo() {
@@ -188,18 +191,16 @@
   function guideFrames() {
     const frames = [{ reset: true, delay: 850 }];
     GUIDE_POINTS.slice(0, 4).forEach((point, index) => {
-      frames.push({ cursor: GUIDE_HINT, label: `Шаг ${index + 1}: курсор идёт к кнопке`, delay: 520 });
-      frames.push({ cursor: GUIDE_HINT, press: "hint", label: "Нажатие показывает только следующий шаг", delay: 360 });
-      frames.push({ cursor: point, star: index, edge: index > 0 ? index - 1 : null, label: index === 0 ? "Появилась только первая точка" : `Появилась точка ${index + 1} и один отрезок`, delay: 780 });
+      frames.push({ cursor: point, click: true, star: index, activate: index, edge: index > 0 ? index - 1 : null, label: index === 0 ? "Первая точка становится активной" : "Новая точка соединяется с активной", delay: 780 });
     });
-    frames.push({ cursor: GUIDE_HINT, press: "hint", edge: 3, label: "Следующий шаг замыкает чашу", delay: 650 });
-    frames.push({ cursor: GUIDE_POINTS[0], activate: 0, label: "Нажмите готовую вершину — она станет активной", delay: 900 });
+    frames.push({ cursor: GUIDE_POINTS[0], click: true, edge: 3, deactivate: true, label: "Нажатие первой точки замыкает контур", delay: 760 });
+    frames.push({ cursor: GUIDE_POINTS[0], activate: 0, click: true, label: "Нажмите вершину ещё раз — начните новую ветвь", delay: 900 });
     GUIDE_POINTS.slice(4).forEach((point, offset) => {
       const index = offset + 4;
-      frames.push({ cursor: GUIDE_HINT, press: "hint", label: "Подсказка открывает ещё один шаг", delay: 360 });
-      frames.push({ cursor: point, star: index, edge: index, label: `Продолжайте ветвь из выбранной вершины`, delay: 760 });
+      frames.push({ cursor: point, click: true, star: index, activate: index, edge: index, label: "Продолжайте линию из выбранной вершины", delay: 760 });
     });
-    frames.push({ label: "Ковш завершён без кнопки разрыва", delay: 1200 });
+    frames.push({ cursor: GUIDE_DONE, press: "done", label: "Когда рисунок готов — нажмите «Готово»", delay: 700 });
+    frames.push({ label: "Сходство 96% · форма зачтена", delay: 1400 });
     return frames;
   }
 
@@ -207,7 +208,7 @@
     const frames = guideFrames();
     if (state.guideFrame >= frames.length) state.guideFrame = 0;
     const frame = frames[state.guideFrame];
-    elements.demoHintButton.classList.remove("is-demo-pressed");
+    elements.demoActionButton.classList.remove("is-demo-pressed");
     elements.demoCursor.classList.remove("is-clicking");
     if (frame.reset) resetGuideDemo();
     if (frame.cursor) elements.demoCursor.style.transform = `translate(${frame.cursor[0]}px, ${frame.cursor[1]}px)`;
@@ -218,11 +219,13 @@
       elements.demoStars[frame.activate]?.classList.add("is-active");
       elements.demoCursor.classList.add("is-clicking");
     }
+    if (frame.deactivate) elements.demoStars.forEach((star) => star.classList.remove("is-active"));
     if (frame.press) {
-      elements.demoHintButton.classList.add("is-demo-pressed");
+      elements.demoActionButton.classList.add("is-demo-pressed");
       void elements.demoCursor.getBoundingClientRect();
       elements.demoCursor.classList.add("is-clicking");
     }
+    if (frame.click) elements.demoCursor.classList.add("is-clicking");
     if (frame.label) elements.demoCaption.textContent = frame.label;
     state.guideFrame += 1;
     state.guideTimer = setTimeout(runGuideFrame, frame.delay);
@@ -235,7 +238,7 @@
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
       elements.demoStars.forEach((star) => star.classList.add("is-visible"));
       elements.demoEdges.forEach((edge) => edge.classList.add("is-visible"));
-      elements.demoCaption.textContent = "Каждое нажатие открывает ровно один следующий шаг";
+      elements.demoCaption.textContent = "Выберите готовую вершину для новой ветви, затем нажмите «Готово»";
       return;
     }
     runGuideFrame();
@@ -316,7 +319,10 @@
     elements.pen.classList.toggle("is-live", state.active !== null);
     elements.undoButton.disabled = state.phase !== "draw" || state.history.length === 0;
     elements.clearButton.disabled = state.phase !== "draw" || state.points.length === 0;
-    elements.pointCounter.textContent = `${state.points.length} / ${state.item?.points.length || 0}`;
+    elements.doneButton.disabled = state.phase !== "draw";
+    elements.pointCounter.textContent = isCoordinateTask()
+      ? `${state.points.length} / ${state.item?.points.length || 0}`
+      : pluralize(state.points.length, "точка", "точки", "точек");
     const inputDisabled = state.phase !== "draw";
     elements.coordinateX.disabled = inputDisabled;
     elements.coordinateY.disabled = inputDisabled;
@@ -378,6 +384,7 @@
       active: state.active,
       chainStart: state.chainStart,
       chainEdges: state.chainEdges,
+      branchArmed: state.branchArmed,
     });
     if (state.history.length > 100) state.history.shift();
   }
@@ -388,6 +395,7 @@
     state.active = snapshotState.active;
     state.chainStart = snapshotState.chainStart ?? snapshotState.active;
     state.chainEdges = snapshotState.chainEdges ?? 0;
+    state.branchArmed = snapshotState.branchArmed ?? false;
     renderDrawing();
   }
 
@@ -443,6 +451,7 @@
       setStatus("Используйте только целые координаты.", "error");
       return;
     }
+    state.shapeMapping = null;
     let target = state.points.findIndex((point) => point.x === gridPoint.x && point.y === gridPoint.y);
     const isNewPoint = target < 0;
     if (isNewPoint) {
@@ -462,13 +471,19 @@
     let duplicateEdge = false;
     let selectedExisting = false;
     let closedContour = false;
+    if (!isNewPoint && state.active === null) {
+      state.branchArmed = true;
+      selectedExisting = true;
+    }
     if (!isNewPoint && state.active !== null && state.active !== target) {
       const shouldConnect = (target === state.chainStart && state.chainEdges >= 2)
+        || state.branchArmed
         || isExpectedMissingUserEdge(state.active, target);
       if (!shouldConnect) {
         state.active = target;
         state.chainStart = target;
         state.chainEdges = 0;
+        state.branchArmed = true;
         selectedExisting = true;
       }
     }
@@ -479,19 +494,22 @@
         state.edges.push([state.active, target]);
         state.newEdgeKey = key;
         state.chainEdges += 1;
+        state.branchArmed = false;
       } else {
         duplicateEdge = true;
       }
     }
     if (state.active === null || isNewPoint && state.chainStart === null) state.chainStart = target;
+    if (isNewPoint) state.branchArmed = false;
     state.active = closedContour ? null : target;
     if (closedContour) {
       state.chainStart = null;
       state.chainEdges = 0;
+      state.branchArmed = false;
     }
     setStatus(
       duplicateEdge ? "Этот отрезок уже соединён и учитывается один раз."
-        : selectedExisting ? `Точка ${target + 1} выбрана. Следующая новая точка продолжит линию отсюда.`
+        : selectedExisting ? `Точка ${target + 1} выбрана. Следующее нажатие соединит её с новой или уже поставленной точкой.`
           : closedContour ? "Контур замкнут. Выберите любую вершину, чтобы продолжить из неё."
             : `Точка ${target + 1}: (${formatNumber(state.points[target].x)}; ${formatNumber(state.points[target].y)}).`,
       "",
@@ -700,37 +718,22 @@
     const pointRatio = matchingPoints / Math.max(state.item.points.length, 1);
     const edgeRatio = matchingEdges / Math.max(state.item.edges.length, 1);
     const similarity = clampPercent((pointRatio * .65 + edgeRatio * .35) * 100);
+    const mapping = Array(state.item.points.length).fill(-1);
+    userToReference.forEach((referenceIndex, userIndex) => {
+      if (referenceIndex >= 0) mapping[referenceIndex] = userIndex;
+    });
     return similarity === 100
-      ? { ok: true, similarity }
-      : { ok: false, similarity, reason: `Совпало ${similarity}% координатной схемы. В этом задании положение, масштаб и координаты должны быть точными.` };
+      ? { ok: true, similarity, mapping }
+      : { ok: false, similarity, mapping, reason: `Сходство ${similarity}%. В этом задании положение, масштаб и координаты должны быть точными.` };
   }
 
   function evaluateShape() {
-    const reference = state.item;
-    if (state.points.length !== reference.points.length || state.edges.length !== reference.edges.length) {
-      return { ok: false, similarity: 0, reason: `Нужно ${reference.points.length} точек и ${reference.edges.length} отрезков. Сейчас ${state.points.length} и ${state.edges.length}.` };
-    }
     if (isCoordinateTask()) return evaluateCoordinateShape();
-    const userDegrees = degreeSequence(state.points.length, state.edges).sort((a, b) => a - b);
-    const refDegrees = degreeSequence(reference.points.length, reference.edges).sort((a, b) => a - b);
-    const matchingDegrees = userDegrees.filter((value, index) => value === refDegrees[index]).length;
-
-    const edgeError = rmse(normalized(edgeLengths(state.points, state.edges)), normalized(edgeLengths(reference.points, reference.edges)));
-    const distanceError = rmse(normalized(pairDistances(state.points)), normalized(pairDistances(reference.points)));
-    const angleError = rmse(angleCosines(state.points, state.edges), angleCosines(reference.points, reference.edges));
-    const score = edgeError * .45 + distanceError * .35 + angleError * .2;
-    let similarity = clampPercent(100 - (score / 1.6) * 100);
-    if (matchingDegrees !== refDegrees.length) similarity = Math.min(84, clampPercent(similarity * .72 + (matchingDegrees / refDegrees.length) * 28));
-    return similarity >= SCHEMATIC_PASS_PERCENT && matchingDegrees === refDegrees.length
-      ? { ok: true, score, similarity }
-      : {
-          ok: false,
-          score,
-          similarity,
-          reason: matchingDegrees === refDegrees.length
-            ? `Сходство ${similarity}%. Для зачёта нужно не меньше ${SCHEMATIC_PASS_PERCENT}%. Подправьте пропорции или углы.`
-            : `Сходство ${similarity}%. Связи между точками отличаются от схемы Wikipedia.`,
-        };
+    return window.ASTRA_SHAPE_MATCHER.evaluate(
+      state.item,
+      { points: state.points, edges: state.edges },
+      SCHEMATIC_PASS_PERCENT,
+    );
   }
 
   function maybeAutoCheck() {
@@ -742,9 +745,10 @@
   function checkShape() {
     const result = evaluateShape();
     state.lastSimilarity = result.similarity;
+    state.shapeMapping = result.mapping || null;
     if (!result.ok) {
       state.failedChecks += 1;
-      setStatus(`${result.reason} Исправьте последнюю точку или очистите поле.`, "error");
+      setStatus(`${result.reason} Продолжите рисунок, отмените последний шаг или очистите поле.`, "error");
       showToast(isCoordinateTask() ? "Координаты пока не совпали" : `Сходство ${result.similarity}%`, result.reason, "error", 4200);
       return;
     }
@@ -756,11 +760,13 @@
     state.active = null;
     state.chainStart = null;
     state.chainEdges = 0;
+    state.branchArmed = false;
     elements.phases[0].className = "phase is-complete";
     elements.phases[1].className = "phase is-active";
     elements.hintButton.disabled = true;
     elements.undoButton.disabled = true;
     elements.clearButton.disabled = true;
+    elements.doneButton.disabled = true;
     elements.instruction.textContent = state.item.kind === "asterism"
       ? "Отметьте все три вершины — результат проверится автоматически."
       : "Выберите α-звезду — результат проверится сразу.";
@@ -791,6 +797,8 @@
 
   function alphaCandidate() {
     const referenceIndex = state.item.alphaIndex;
+    const mappedIndex = state.shapeMapping?.[referenceIndex];
+    if (Number.isInteger(mappedIndex) && mappedIndex >= 0) return mappedIndex;
     const refDegrees = degreeSequence(state.item.points.length, state.item.edges);
     const userDegrees = degreeSequence(state.points.length, state.edges);
     const targetSignature = nodeSignature(state.item.points, referenceIndex);
@@ -853,7 +861,7 @@
     saveStats();
     elements.resultLabel.textContent = clean ? "Без подсказок" : "Задание завершено";
     elements.resultTitle.textContent = clean ? "Точно" : "Готово";
-    const similarityNote = !isCoordinateTask() && Number.isFinite(state.lastSimilarity) ? ` Сходство формы — ${state.lastSimilarity}%.` : "";
+    const similarityNote = Number.isFinite(state.lastSimilarity) ? ` Сходство — ${state.lastSimilarity}%.` : "";
     elements.resultText.textContent = clean
       ? `Форма совпала, а ключевая звезда отмечена верно.${similarityNote}`
       : `Схема разобрана. Повторите её позже без подсказки, чтобы закрепить.${similarityNote}`;
@@ -899,6 +907,8 @@
     state.active = null;
     state.chainStart = null;
     state.chainEdges = 0;
+    state.branchArmed = false;
+    state.shapeMapping = null;
     setStatus("Поле очищено. Поставьте первую точку.", "");
     renderDrawing();
   }
@@ -920,6 +930,7 @@
     state.active = null;
     state.chainStart = null;
     state.chainEdges = 0;
+    state.branchArmed = false;
     state.selected = new Set();
     state.hintCount = 0;
     state.hintPoints = new Set();
@@ -931,6 +942,7 @@
     state.wrongIndices = new Set();
     state.newEdgeKey = null;
     state.lastSimilarity = null;
+    state.shapeMapping = null;
     elements.title.textContent = state.item.name;
     elements.title.classList.toggle("is-medium", state.item.name.length > 8 && state.item.name.length <= 14);
     elements.title.classList.toggle("is-long", state.item.name.length > 14);
@@ -958,6 +970,7 @@
     elements.hintButton.append(hintPlus, document.createTextNode(" Показать шаг"));
     elements.answerButton.disabled = false;
     elements.answerButton.textContent = "Показать ответ";
+    elements.doneButton.disabled = false;
     const wasModalOpen = !elements.resultPanel.hidden;
     elements.resultPanel.hidden = true;
     elements.resultPanel.classList.remove("is-counting");
@@ -993,6 +1006,7 @@
   elements.hintButton.addEventListener("click", showHint);
   elements.undoButton.addEventListener("click", undo);
   elements.clearButton.addEventListener("click", clearDrawing);
+  elements.doneButton.addEventListener("click", checkShape);
   elements.answerButton.addEventListener("click", revealAnswer);
   elements.skipButton.addEventListener("click", loadNext);
   elements.nextButton.addEventListener("click", loadNext);
@@ -1021,6 +1035,7 @@
       state.active = null;
       state.chainStart = null;
       state.chainEdges = 0;
+      state.branchArmed = false;
       setStatus("Выбор снят. Нажмите любую готовую вершину, чтобы продолжить из неё.", "");
       renderDrawing();
       return;

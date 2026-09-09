@@ -4,6 +4,6 @@
   "private": true,
   "scripts": {
     "build": "node tools/build-static.mjs",
-    "test": "node tools/verify-site.mjs"
+    "test": "node tools/test-shape-matcher.cjs && node tools/verify-site.mjs"
   }
 }

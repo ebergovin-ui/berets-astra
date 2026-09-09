@@ -1,8 +1,9 @@
 """Build the compact browser dataset used by the trainer.
 
-The geometry comes from d3-celestial's constellation line GeoJSON. Star names
-and positions are joined by HIP identifier so the alpha marker is attached to
-the same point used by the line drawing.
+Every schematic path is traced from the green stick figure on the linked
+Wikipedia/Wikimedia constellation map. HIP positions keep those traced stars
+in their real relative sky geometry and attach the alpha marker to the same
+vertex used by the figure.
 """
 
 from __future__ import annotations
@@ -102,14 +103,14 @@ WIKIMEDIA_SCHEMES = {
     "Lyr": [[91262, 91971, 92420, 93194, 92791, 91971]],
     "And": [[677, 3092, 5447, 9640], [5447, 4436]],
     "Dra": [[87833, 85670, 85819, 87585, 87833], [85670, 83895, 80331, 78527, 75458, 68756, 61281, 56211]],
-    "Cep": [[105199, 106032, 116727, 112724, 109492, 105199]],
+    "Cep": [[116727, 106032, 105199, 102422], [105199, 109492, 110991, 112724, 116727]],
     "Per": [[14328, 15863, 17358, 18532, 18614], [15863, 14576, 17448], [15863, 13268]],
     "Cas": [[746, 3179, 4427, 6686, 8886]],
     "UMi": [[11767, 85822, 82080, 77055, 79822, 75097, 72607, 77055]],
     "UMa": [[67301, 65378, 62956, 59774, 58001, 53910, 54061, 59774]],
     "CrB": [[76127, 75695, 76267, 76952, 77512, 78159, 78493]],
     "Ori": [[27989, 25336, 24436, 27366, 27989], [26727, 26311, 25930]],
-    "Gem": [[36850, 34693, 32246, 30343, 28734], [37826, 36962, 35550, 34088, 31681], [34693, 35550]],
+    "Gem": [[36850, 32246, 30343, 28734], [37826, 35550, 34088, 31681]],
     "Leo": [[57632, 54879, 49669, 49583, 50583, 54872, 57632], [50583, 50335, 48455, 47908], [54872, 54879]],
     "Boo": [[71795, 69673, 72105, 74666, 73555, 71075, 71053, 69673, 67927, 67459]],
     "Sco": [[85927, 86670, 87073, 86228, 84143, 82671, 82514, 82396, 81266, 80763, 78401], [80763, 78265], [80763, 78820]],
@@ -151,6 +152,28 @@ WIKIMEDIA_SOURCE_URLS = {
     "CMi": "https://commons.wikimedia.org/wiki/File:Canis_Minor_constellation_map.svg",
     "Cru": "https://commons.wikimedia.org/wiki/File:Crux_constellation_map.svg",
     "Tau": "https://commons.wikimedia.org/wiki/File:Taurus_constellation_map.svg",
+}
+
+# Legible integer-grid redraws of the same Wikimedia paths. These are used only
+# where the real sky projection compresses several connected stars into one
+# small area; the vertex and edge topology above remains unchanged.
+PEDAGOGICAL_LAYOUTS = {
+    "Cep": [
+        {"x": -9, "y": 12}, {"x": 3, "y": 5}, {"x": 7, "y": -2},
+        {"x": 13, "y": -1}, {"x": 2, "y": -11}, {"x": -3, "y": -11},
+        {"x": -8, "y": -3},
+    ],
+    "Dra": [
+        {"x": 13, "y": 9}, {"x": 9, "y": 7}, {"x": 8, "y": 12},
+        {"x": 12, "y": 13}, {"x": 7, "y": 3}, {"x": 4, "y": 1},
+        {"x": 1, "y": -2}, {"x": -2, "y": -5}, {"x": -6, "y": -9},
+        {"x": -10, "y": -8}, {"x": -14, "y": -4},
+    ],
+    "Tau": [
+        {"x": -13, "y": 11}, {"x": -8, "y": 5}, {"x": -3, "y": 1},
+        {"x": 0, "y": 0}, {"x": 13, "y": 9}, {"x": 2, "y": -3},
+        {"x": 0, "y": -7}, {"x": -3, "y": -3}, {"x": -5, "y": -7},
+    ],
 }
 
 
@@ -309,27 +332,10 @@ def main():
         )
         point_names = [star_label(names.get(str(hip), {"hip": hip}), abbr) for hip in hips]
 
-        if abbr == "Tau":
-            # A wide, immediately recognisable Taurus: Hyades V and two horns.
-            points = [
-                {"x": -13, "y": 11}, {"x": -8, "y": 5}, {"x": -3, "y": 1},
-                {"x": 0, "y": 0}, {"x": 13, "y": 9}, {"x": 2, "y": -3},
-                {"x": 0, "y": -6}, {"x": -2, "y": -3}, {"x": -4, "y": -6},
-            ]
-        elif abbr == "UMa":
-            # The familiar seven-star Big Dipper shown on the Wikipedia map.
-            points = [
-                {"x": -14, "y": 3}, {"x": -9, "y": 5}, {"x": -4, "y": 4},
-                {"x": 1, "y": 2}, {"x": 2, "y": -5}, {"x": 8, "y": -5},
-                {"x": 9, "y": 2},
-            ]
-        elif abbr == "UMi":
-            # The seven-star Little Dipper, with Polaris at the handle tip.
-            points = [
-                {"x": -14, "y": 5}, {"x": -9, "y": 3}, {"x": -4, "y": 1},
-                {"x": 1, "y": 0}, {"x": 2, "y": -5}, {"x": 8, "y": -4},
-                {"x": 8, "y": 2},
-            ]
+        if abbr in PEDAGOGICAL_LAYOUTS:
+            if len(PEDAGOGICAL_LAYOUTS[abbr]) != len(points):
+                raise RuntimeError(f"Pedagogical Wikipedia redraw length mismatch for {abbr}")
+            points = PEDAGOGICAL_LAYOUTS[abbr]
         points = integerize_points(points)
         point_names[alpha_index] = alpha_name
 
