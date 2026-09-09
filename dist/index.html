@@ -35,6 +35,7 @@
       </span>
     </a>
     <div class="top-stats" aria-label="Статистика тренировки">
+      <button id="settingsButton" class="guide-button" type="button">Эталоны</button>
       <button id="guideButton" class="guide-button" type="button">Руководство</button>
       <span><b id="streakValue">0</b> серия</span>
       <span><b id="masteredValue">0</b> освоено</span>
@@ -48,7 +49,7 @@
           <p id="taskType" class="task-type task-mode">Схематично · зачёт от 85%</p>
           <h1 id="taskTitle">Лебедь</h1>
         </div>
-        <div class="round-count"><span id="roundIndex">1</span><small>/ <span id="roundTotal">36</span></small></div>
+        <div class="round-count"><span id="roundIndex">1</span><small>/ <span id="roundTotal">27</span></small></div>
       </div>
 
       <div class="phase-strip" aria-label="Этапы задания">
@@ -176,6 +177,46 @@
       <span id="demoCaption" class="demo-loop-label" aria-hidden="true">Сначала поле пустое</span>
     </div>
     <button id="guideStart" class="button button-primary" type="button">Понятно, начать</button>
+  </dialog>
+
+  <dialog id="settingsDialog" class="settings-dialog" aria-labelledby="settingsTitle">
+    <div class="settings-dialog__head">
+      <div>
+        <p class="task-type">Личные настройки</p>
+        <h2 id="settingsTitle">Эталоны созвездий</h2>
+        <p>Выберите объект, при необходимости перерисуйте его и сохраните. Проверка будет использовать ваш вариант только в этом браузере.</p>
+      </div>
+      <button id="settingsClose" class="dialog-close" type="button" aria-label="Закрыть настройки">×</button>
+    </div>
+    <div class="reference-editor">
+      <aside class="reference-list" aria-label="Список учебных объектов">
+        <label for="referenceSelect">Созвездие или треугольник</label>
+        <select id="referenceSelect"></select>
+        <div id="referenceObjects" class="reference-objects"></div>
+      </aside>
+      <section class="reference-workbench" aria-label="Редактор эталонной схемы">
+        <div class="reference-workbench__bar">
+          <div><b id="referenceTitle">Созвездие</b><span id="referenceState">Эталон Wikipedia</span></div>
+          <span id="referenceCount">0 точек · 0 линий</span>
+        </div>
+        <div id="referenceSky" class="reference-sky" tabindex="0">
+          <svg id="referenceSvg" viewBox="0 0 1000 680" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+            <g id="referenceGrid"></g>
+            <g id="referenceLines"></g>
+            <g id="referenceStars"></g>
+          </svg>
+        </div>
+        <p id="referenceHelp" class="reference-help">Нажмите готовую точку, чтобы выбрать вершину, затем следующую — чтобы провести линию.</p>
+        <div class="reference-actions">
+          <button id="referenceUndo" class="button button-quiet" type="button">Отменить</button>
+          <button id="referenceClear" class="button button-quiet" type="button">Перерисовать</button>
+          <button id="referenceAlpha" class="button button-quiet" type="button">Указать α-звезду</button>
+          <button id="referenceReset" class="button button-quiet" type="button">Вернуть Wikipedia</button>
+          <button id="referenceSave" class="button button-primary" type="button">Сохранить эталон</button>
+        </div>
+        <p id="referenceMessage" class="reference-message" role="status" aria-live="polite"></p>
+      </section>
+    </div>
   </dialog>
 
   <script src="constellations.js"></script>

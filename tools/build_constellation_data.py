@@ -54,8 +54,9 @@ GENITIVE = {
     "CMi": "Малого Пса", "Cru": "Южного Креста", "Tau": "Тельца",
 }
 
-# Exact coordinate schemes printed in the teacher's attached Word document.
-# Each nested list is a separate stroke; a repeated point closes a loop.
+# Former coordinate-only exercises from the teacher's document. They are kept
+# here only as source material for the Draco schematic below; they are no
+# longer emitted as separate practice tasks.
 SCHOOL_SCHEMES = {
     "Cyg": {
         "lines": [[(-3, 4), (-2, 2), (0, 0), (2, -2)], [(5, -3), (3, 1), (-3, -1), (-7, -2)]],
@@ -174,6 +175,42 @@ PEDAGOGICAL_LAYOUTS = {
         {"x": 0, "y": 0}, {"x": 13, "y": 9}, {"x": 2, "y": -3},
         {"x": 0, "y": -7}, {"x": -3, "y": -3}, {"x": -5, "y": -7},
     ],
+}
+
+# Clear classroom redraws of the same green Wikipedia/Wikimedia stick figures.
+# These layouts intentionally favour the recognizable compact outline over the
+# distorted sky projection while preserving the named vertices and topology.
+MANUAL_SCHEMES = {
+    "Peg": {
+        "points": [(-9, 7), (1, 5), (1, -5), (-11, -4), (6, 7), (8, 10), (13, 11), (5, -8), (9, -11), (14, -8)],
+        "edges": [(0, 1), (1, 2), (2, 3), (0, 3), (1, 4), (4, 5), (5, 6), (2, 7), (7, 8), (8, 9)],
+        "names": ["Альферац", "Шеат", "Маркаб", "Альгениб", "η Peg", "μ Peg", "ι Peg", "ζ Peg", "θ Peg", "Эниф"],
+        "alpha": 2,
+    },
+    "Ori": {
+        "points": [(-8, 10), (3, 9), (7, -11), (-6, -11), (-3, 0), (0, 1), (3, 2), (-1, -4)],
+        "edges": [(0, 4), (1, 6), (4, 5), (5, 6), (4, 3), (6, 2), (5, 7)],
+        "names": ["Бетельгейзе", "Беллатрикс", "Ригель", "Саиф", "Альнитак", "Альнилам", "Минтака", "Хатиса"],
+        "alpha": 0,
+    },
+    "Cyg": {
+        "points": [(-5, 6), (0, 0), (9, -10), (-6, -7), (7, 5), (8, 12)],
+        "edges": [(0, 1), (1, 2), (3, 1), (1, 4), (4, 5)],
+        "names": ["Денеб", "Садр", "Альбирео", "Дженах", "δ Cyg", "ι² Cyg"],
+        "alpha": 0,
+    },
+    "CMa": {
+        "points": [(-4, 10), (6, 8), (-8, 2), (-10, -3), (-6, -7), (-14, -9), (6, -9)],
+        "edges": [(0, 1), (0, 2), (2, 3), (3, 4), (3, 5), (4, 6)],
+        "names": ["Сириус", "Мирзам", "ο² CMa", "Везен", "Адара", "Алюдра", "ζ CMa"],
+        "alpha": 0,
+    },
+    "Dra": {
+        "points": SCHOOL_SCHEMES["Dra"]["lines"][0][:-1],
+        "edges": [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 9), (9, 10), (10, 11), (11, 12), (12, 13), (13, 14), (14, 15), (12, 15)],
+        "names": ["Звезда Дракона 1", "Звезда Дракона 2", "Звезда Дракона 3", "Звезда Дракона 4", "Звезда Дракона 5", "Звезда Дракона 6", "Звезда Дракона 7", "Звезда Дракона 8", "Тубан", "Звезда Дракона 10", "Звезда Дракона 11", "Звезда Дракона 12", "Звезда Дракона 13", "Звезда Дракона 14", "Звезда Дракона 15", "Звезда Дракона 16"],
+        "alpha": 8,
+    },
 }
 
 
@@ -332,7 +369,14 @@ def main():
         )
         point_names = [star_label(names.get(str(hip), {"hip": hip}), abbr) for hip in hips]
 
-        if abbr in PEDAGOGICAL_LAYOUTS:
+        if abbr in MANUAL_SCHEMES:
+            manual = MANUAL_SCHEMES[abbr]
+            points = [{"x": x, "y": y} for x, y in manual["points"]]
+            edges = [list(edge) for edge in manual["edges"]]
+            point_names = list(manual["names"])
+            alpha_index = manual["alpha"]
+
+        elif abbr in PEDAGOGICAL_LAYOUTS:
             if len(PEDAGOGICAL_LAYOUTS[abbr]) != len(points):
                 raise RuntimeError(f"Pedagogical Wikipedia redraw length mismatch for {abbr}")
             points = PEDAGOGICAL_LAYOUTS[abbr]
@@ -387,33 +431,9 @@ def main():
         },
     ])
 
-    # The nine teacher figures also return as separate exact-coordinate tasks.
-    # They are mixed into the same random deck rather than exposed as a mode.
-    for abbr, scheme in SCHOOL_SCHEMES.items():
-        title, alpha_name = target_meta[abbr]
-        point_index, points, edges = indexed_scheme(scheme["lines"])
-        alpha_index = point_index[scheme["alpha"]]
-        point_names = [f"Звезда схемы №{index + 1}" for index in range(len(points))]
-        for coordinate, star_name in scheme.get("names", {}).items():
-            point_names[point_index[coordinate]] = star_name
-        output.append({
-            "id": f"{abbr}-coordinates",
-            "name": title,
-            "kind": "constellation",
-            "alpha": alpha_name,
-            "alphaDesignation": f"α {abbr}",
-            "alphaScientific": f"α {GENITIVE[abbr]}",
-            "alphaIndex": alpha_index,
-            "pointNames": point_names,
-            "source": "teacher-document",
-            "sourceUrl": None,
-            "points": integerize_points(points),
-            "edges": edges,
-        })
-
     payload = json.dumps(output, ensure_ascii=False, separators=(",", ":"))
     (ROOT / "constellations.js").write_text(
-        "// Geometry uses the teacher document and Wikipedia/Wikimedia constellation maps. See README.md.\n"
+        "// Geometry uses Wikipedia/Wikimedia constellation maps. See README.md.\n"
         f"window.CONSTELLATIONS={payload};\n",
         encoding="utf-8",
     )

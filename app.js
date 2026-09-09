@@ -1,7 +1,40 @@
 (() => {
   "use strict";
 
-  const objects = window.CONSTELLATIONS;
+  const baseObjects = window.CONSTELLATIONS.map((item) => structuredClone(item));
+  const REFERENCE_STORAGE_KEY = "astra-reference-overrides-v1";
+
+  function validReferenceOverride(value) {
+    if (!value || !Array.isArray(value.points) || !Array.isArray(value.edges)) return false;
+    if (value.points.length < 2 || value.points.length > 40 || value.edges.length < 1 || value.edges.length > 80) return false;
+    if (!value.points.every((point) => Number.isInteger(point.x) && Number.isInteger(point.y) && point.x >= -16 && point.x <= 16 && point.y >= -16 && point.y <= 16)) return false;
+    if (new Set(value.points.map((point) => `${point.x}:${point.y}`)).size !== value.points.length) return false;
+    if (value.alphaIndex !== undefined && (!Number.isInteger(value.alphaIndex) || value.alphaIndex < 0 || value.alphaIndex >= value.points.length)) return false;
+    const edgeKeys = new Set();
+    return value.edges.every((edge) => {
+      if (!Array.isArray(edge) || edge.length !== 2 || !edge.every((index) => Number.isInteger(index) && index >= 0 && index < value.points.length) || edge[0] === edge[1]) return false;
+      const key = [...edge].sort((a, b) => a - b).join(":");
+      if (edgeKeys.has(key)) return false;
+      edgeKeys.add(key);
+      return true;
+    });
+  }
+
+  function readReferenceOverrides() {
+    try {
+      const stored = JSON.parse(localStorage.getItem(REFERENCE_STORAGE_KEY) || "{}");
+      return Object.fromEntries(Object.entries(stored).filter(([, value]) => validReferenceOverride(value)));
+    } catch {
+      return {};
+    }
+  }
+
+  const referenceOverrides = readReferenceOverrides();
+  const objects = baseObjects.map((item) => {
+    const custom = referenceOverrides[item.id];
+    if (!custom) return structuredClone(item);
+    return { ...structuredClone(item), ...structuredClone(custom), customReference: true };
+  });
   const GRID = { minX: -16, maxX: 16, minY: -16, maxY: 16, left: 200, right: 800, top: 40, bottom: 640 };
   const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -59,6 +92,26 @@
     guideDialog: $("#guideDialog"),
     guideClose: $("#guideClose"),
     guideStart: $("#guideStart"),
+    settingsButton: $("#settingsButton"),
+    settingsDialog: $("#settingsDialog"),
+    settingsClose: $("#settingsClose"),
+    referenceSelect: $("#referenceSelect"),
+    referenceObjects: $("#referenceObjects"),
+    referenceTitle: $("#referenceTitle"),
+    referenceState: $("#referenceState"),
+    referenceCount: $("#referenceCount"),
+    referenceSky: $("#referenceSky"),
+    referenceSvg: $("#referenceSvg"),
+    referenceGrid: $("#referenceGrid"),
+    referenceLines: $("#referenceLines"),
+    referenceStars: $("#referenceStars"),
+    referenceHelp: $("#referenceHelp"),
+    referenceUndo: $("#referenceUndo"),
+    referenceClear: $("#referenceClear"),
+    referenceAlpha: $("#referenceAlpha"),
+    referenceReset: $("#referenceReset"),
+    referenceSave: $("#referenceSave"),
+    referenceMessage: $("#referenceMessage"),
     demoCaption: $("#demoCaption"),
     demoCursor: $(".demo-cursor"),
     demoActionButton: $(".demo-button--done"),
@@ -106,6 +159,15 @@
   const GUIDE_POINTS = [[240, 155], [370, 155], [350, 260], [255, 260], [150, 140], [70, 160]];
   const GUIDE_DONE = [116, 22];
   const SCHEMATIC_PASS_PERCENT = 85;
+  const editor = {
+    itemIndex: 0,
+    points: [],
+    edges: [],
+    active: null,
+    alphaIndex: null,
+    alphaMode: false,
+    history: [],
+  };
 
   function shuffle(values) {
     for (let i = values.length - 1; i > 0; i -= 1) {
@@ -158,6 +220,209 @@
 
   function formatNumber(value) {
     return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(".", ",");
+  }
+
+  function saveReferenceOverrides() {
+    try { localStorage.setItem(REFERENCE_STORAGE_KEY, JSON.stringify(referenceOverrides)); } catch { /* private mode */ }
+  }
+
+  function editorSnapshot() {
+    editor.history.push({
+      points: structuredClone(editor.points),
+      edges: structuredClone(editor.edges),
+      active: editor.active,
+      alphaIndex: editor.alphaIndex,
+    });
+    if (editor.history.length > 60) editor.history.shift();
+  }
+
+  function editorMessage(text, tone = "") {
+    elements.referenceMessage.textContent = text;
+    elements.referenceMessage.className = `reference-message${tone ? ` is-${tone}` : ""}`;
+  }
+
+  function renderReferenceGrid() {
+    if (elements.referenceGrid.childElementCount) return;
+    for (let value = -16; value <= 16; value += 1) {
+      const vertical = toSvg({ x: value, y: 0 }).x;
+      const horizontal = toSvg({ x: 0, y: value }).y;
+      const major = value % 4 === 0;
+      elements.referenceGrid.append(
+        svgElement("line", { x1: vertical, y1: GRID.top, x2: vertical, y2: GRID.bottom, class: value === 0 ? "reference-axis" : major ? "reference-grid-major" : "reference-grid-minor" }),
+        svgElement("line", { x1: GRID.left, y1: horizontal, x2: GRID.right, y2: horizontal, class: value === 0 ? "reference-axis" : major ? "reference-grid-major" : "reference-grid-minor" }),
+      );
+    }
+  }
+
+  function renderReferenceEditor() {
+    renderReferenceGrid();
+    elements.referenceLines.replaceChildren();
+    elements.referenceStars.replaceChildren();
+    editor.edges.forEach(([a, b]) => {
+      if (!editor.points[a] || !editor.points[b]) return;
+      const from = toSvg(editor.points[a]);
+      const to = toSvg(editor.points[b]);
+      elements.referenceLines.append(svgElement("line", { x1: from.x, y1: from.y, x2: to.x, y2: to.y, class: "reference-line" }));
+    });
+    editor.points.forEach((point, index) => {
+      const position = toSvg(point);
+      const group = svgElement("g", { class: `reference-star${editor.active === index ? " is-active" : ""}${editor.alphaIndex === index ? " is-alpha" : ""}`, "data-index": index });
+      group.append(
+        svgElement("circle", { cx: position.x, cy: position.y, r: 30 }),
+        svgElement("circle", { cx: position.x, cy: position.y, r: 8 }),
+      );
+      const label = svgElement("text", { x: position.x + 13, y: position.y - 12 });
+      label.textContent = `${index + 1}`;
+      group.append(label);
+      elements.referenceStars.append(group);
+    });
+    elements.referenceCount.textContent = `${editor.points.length} точек · ${editor.edges.length} линий`;
+    elements.referenceUndo.disabled = editor.history.length === 0;
+    elements.referenceAlpha.disabled = objects[editor.itemIndex]?.kind === "asterism" || editor.points.length === 0;
+    elements.referenceAlpha.textContent = editor.alphaMode ? "Выберите α на поле" : "Указать α-звезду";
+    elements.referenceHelp.classList.toggle("is-alpha", editor.alphaMode);
+    elements.referenceHelp.textContent = editor.alphaMode
+      ? "Нажмите точку, которая должна считаться α-звездой."
+      : "Нажмите активную точку ещё раз, чтобы снять выбор. Затем выберите любую вершину и продолжите новую ветвь из неё.";
+  }
+
+  function rebuildReferenceList() {
+    elements.referenceSelect.replaceChildren();
+    elements.referenceObjects.replaceChildren();
+    objects.forEach((item, index) => {
+      const option = document.createElement("option");
+      option.value = String(index);
+      option.textContent = item.name;
+      elements.referenceSelect.append(option);
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `reference-object${index === editor.itemIndex ? " is-active" : ""}${referenceOverrides[item.id] ? " is-custom" : ""}`;
+      const name = document.createElement("span");
+      name.textContent = item.name;
+      const status = document.createElement("small");
+      status.textContent = referenceOverrides[item.id] ? "Свой" : "Wiki";
+      button.append(name, status);
+      button.addEventListener("click", () => loadReferenceEditor(index));
+      elements.referenceObjects.append(button);
+    });
+    elements.referenceSelect.value = String(editor.itemIndex);
+  }
+
+  function loadReferenceEditor(index) {
+    editor.itemIndex = Math.max(0, Math.min(objects.length - 1, Number(index) || 0));
+    const item = objects[editor.itemIndex];
+    editor.points = structuredClone(item.points);
+    editor.edges = structuredClone(item.edges);
+    editor.active = null;
+    editor.alphaIndex = item.kind === "constellation" ? item.alphaIndex : null;
+    editor.alphaMode = false;
+    editor.history = [];
+    elements.referenceTitle.textContent = item.name;
+    elements.referenceState.textContent = referenceOverrides[item.id] ? "Ваш сохранённый эталон" : "Эталон Wikipedia / Wikimedia";
+    editorMessage("");
+    rebuildReferenceList();
+    renderReferenceEditor();
+  }
+
+  function referencePointFromEvent(event) {
+    const rect = elements.referenceSvg.getBoundingClientRect();
+    return fromSvg((event.clientX - rect.left) * 1000 / rect.width, (event.clientY - rect.top) * 680 / rect.height);
+  }
+
+  function handleReferencePointer(event) {
+    const point = referencePointFromEvent(event);
+    const existing = editor.points.findIndex((candidate) => candidate.x === point.x && candidate.y === point.y);
+    if (editor.alphaMode) {
+      if (existing < 0) return editorMessage("Для α-звезды выберите уже поставленную точку.", "error");
+      editorSnapshot();
+      editor.alphaIndex = existing;
+      editor.alphaMode = false;
+      editorMessage(`α-звезда назначена точке ${existing + 1}.`, "success");
+      renderReferenceEditor();
+      return;
+    }
+    editorSnapshot();
+    if (existing >= 0) {
+      if (editor.active === existing) editor.active = null;
+      else if (editor.active === null) editor.active = existing;
+      else {
+        const key = edgeKey(editor.active, existing);
+        if (!editor.edges.some(([a, b]) => edgeKey(a, b) === key)) editor.edges.push([editor.active, existing]);
+        editor.active = existing;
+      }
+    } else {
+      const index = editor.points.push(point) - 1;
+      if (editor.active !== null) editor.edges.push([editor.active, index]);
+      editor.active = index;
+    }
+    editorMessage("");
+    renderReferenceEditor();
+  }
+
+  function undoReferenceEdit() {
+    const previous = editor.history.pop();
+    if (!previous) return;
+    editor.points = previous.points;
+    editor.edges = previous.edges;
+    editor.active = previous.active;
+    editor.alphaIndex = previous.alphaIndex;
+    editor.alphaMode = false;
+    editorMessage("Последнее действие отменено.");
+    renderReferenceEditor();
+  }
+
+  function clearReferenceEditor() {
+    editorSnapshot();
+    editor.points = [];
+    editor.edges = [];
+    editor.active = null;
+    editor.alphaIndex = null;
+    editor.alphaMode = false;
+    editorMessage("Поле очищено. Поставьте первую точку.");
+    renderReferenceEditor();
+  }
+
+  function saveReferenceEditor() {
+    const item = objects[editor.itemIndex];
+    const candidate = { points: structuredClone(editor.points), edges: structuredClone(editor.edges) };
+    if (!validReferenceOverride(candidate)) return editorMessage("Нужно поставить не менее двух точек и соединить хотя бы одну пару.", "error");
+    if (item.kind === "constellation" && (!Number.isInteger(editor.alphaIndex) || !editor.points[editor.alphaIndex])) {
+      return editorMessage("Перед сохранением укажите α-звезду.", "error");
+    }
+    candidate.alphaIndex = item.kind === "constellation" ? editor.alphaIndex : undefined;
+    candidate.pointNames = editor.points.map((_, index) => item.kind === "constellation" && index === editor.alphaIndex ? item.alpha : `Звезда №${index + 1}`);
+    referenceOverrides[item.id] = candidate;
+    saveReferenceOverrides();
+    Object.assign(item, structuredClone(candidate), { customReference: true });
+    elements.referenceState.textContent = "Ваш сохранённый эталон";
+    rebuildReferenceList();
+    editorMessage("Эталон сохранён. Следующая проверка использует эту схему.", "success");
+    if (state.item?.id === item.id) {
+      state.item = item;
+      clearDrawing();
+      elements.sourceLink.textContent = "Эталон изменён в настройках";
+    }
+  }
+
+  function resetReferenceEditor() {
+    const item = objects[editor.itemIndex];
+    const original = structuredClone(baseObjects.find((candidate) => candidate.id === item.id));
+    delete referenceOverrides[item.id];
+    saveReferenceOverrides();
+    Object.keys(item).forEach((key) => delete item[key]);
+    Object.assign(item, original);
+    loadReferenceEditor(editor.itemIndex);
+    editorMessage("Возвращён исходный эталон Wikipedia / Wikimedia.", "success");
+    if (state.item?.id === item.id) {
+      state.item = item;
+      clearDrawing();
+    }
+  }
+
+  function openReferenceSettings() {
+    const currentIndex = Math.max(0, objects.findIndex((item) => item.id === state.item?.id));
+    loadReferenceEditor(currentIndex);
+    elements.settingsDialog.showModal();
   }
 
   function fitTaskTitle() {
@@ -320,9 +585,7 @@
     elements.undoButton.disabled = state.phase !== "draw" || state.history.length === 0;
     elements.clearButton.disabled = state.phase !== "draw" || state.points.length === 0;
     elements.doneButton.disabled = state.phase !== "draw";
-    elements.pointCounter.textContent = isCoordinateTask()
-      ? `${state.points.length} / ${state.item?.points.length || 0}`
-      : pluralize(state.points.length, "точка", "точки", "точек");
+    elements.pointCounter.textContent = pluralize(state.points.length, "точка", "точки", "точек");
     const inputDisabled = state.phase !== "draw";
     elements.coordinateX.disabled = inputDisabled;
     elements.coordinateY.disabled = inputDisabled;
@@ -701,34 +964,7 @@
     return Math.max(0, Math.min(100, Math.round(value)));
   }
 
-  function isCoordinateTask() {
-    return state.item?.source === "teacher-document";
-  }
-
-  function evaluateCoordinateShape() {
-    const referencePointByKey = new Map(state.item.points.map((point, index) => [`${point.x},${point.y}`, index]));
-    const userToReference = state.points.map((point) => referencePointByKey.get(`${point.x},${point.y}`) ?? -1);
-    const matchingPoints = userToReference.filter((index) => index >= 0).length;
-    const referenceEdges = new Set(state.item.edges.map(([a, b]) => edgeKey(a, b)));
-    const matchingEdges = state.edges.filter(([a, b]) => {
-      const refA = userToReference[a];
-      const refB = userToReference[b];
-      return refA >= 0 && refB >= 0 && referenceEdges.has(edgeKey(refA, refB));
-    }).length;
-    const pointRatio = matchingPoints / Math.max(state.item.points.length, 1);
-    const edgeRatio = matchingEdges / Math.max(state.item.edges.length, 1);
-    const similarity = clampPercent((pointRatio * .65 + edgeRatio * .35) * 100);
-    const mapping = Array(state.item.points.length).fill(-1);
-    userToReference.forEach((referenceIndex, userIndex) => {
-      if (referenceIndex >= 0) mapping[referenceIndex] = userIndex;
-    });
-    return similarity === 100
-      ? { ok: true, similarity, mapping }
-      : { ok: false, similarity, mapping, reason: `Сходство ${similarity}%. В этом задании положение, масштаб и координаты должны быть точными.` };
-  }
-
   function evaluateShape() {
-    if (isCoordinateTask()) return evaluateCoordinateShape();
     return window.ASTRA_SHAPE_MATCHER.evaluate(
       state.item,
       { points: state.points, edges: state.edges },
@@ -749,7 +985,7 @@
     if (!result.ok) {
       state.failedChecks += 1;
       setStatus(`${result.reason} Продолжите рисунок, отмените последний шаг или очистите поле.`, "error");
-      showToast(isCoordinateTask() ? "Координаты пока не совпали" : `Сходство ${result.similarity}%`, result.reason, "error", 4200);
+      showToast(`Сходство ${result.similarity}%`, result.reason, "error", 4200);
       return;
     }
     enterIdentifyPhase();
@@ -772,8 +1008,7 @@
       : "Выберите α-звезду — результат проверится сразу.";
     setStatus(state.item.kind === "asterism" ? "Выбрано вершин: 0 из 3." : "Выберите одну светящуюся точку.", "success");
     renderDrawing();
-    const successTitle = isCoordinateTask() ? "Координаты совпали" : `Сходство ${state.lastSimilarity}%`;
-    showToast(successTitle, state.item.kind === "asterism" ? "Теперь отметьте три вершины." : "Форма зачтена. Теперь выберите α-звезду.", "success", 4200);
+    showToast(`Сходство ${state.lastSimilarity}%`, state.item.kind === "asterism" ? "Теперь отметьте три вершины." : "Форма зачтена. Теперь выберите α-звезду.", "success", 4200);
   }
 
   function toggleIdentification(index) {
@@ -889,9 +1124,7 @@
     elements.hints.replaceChildren();
     elements.answerButton.textContent = "Ответ показан";
     elements.answerButton.disabled = true;
-    setStatus(isCoordinateTask()
-      ? "Эталон показан серым пунктиром. Для этого задания повторите его в тех же координатах."
-      : "Эталон показан серым пунктиром. Его можно перенести, повернуть или отразить.", "");
+    setStatus("Эталон показан серым пунктиром. Его можно перенести, повернуть, отразить или изменить в настройках.", "");
   }
 
   function undo() {
@@ -947,21 +1180,18 @@
     elements.title.classList.toggle("is-medium", state.item.name.length > 8 && state.item.name.length <= 14);
     elements.title.classList.toggle("is-long", state.item.name.length > 14);
     fitTaskTitle();
-    const coordinateTask = isCoordinateTask();
-    elements.type.textContent = coordinateTask ? "По координатам · точное совпадение" : `Схематично · зачёт от ${SCHEMATIC_PASS_PERCENT}%`;
-    elements.type.classList.toggle("is-coordinate", coordinateTask);
-    elements.sourceLink.hidden = coordinateTask;
-    if (!coordinateTask) {
-      elements.sourceLink.href = state.item.sourceUrl || "https://commons.wikimedia.org/";
-      elements.sourceLink.textContent = state.item.kind === "asterism" ? "Источник: Wikipedia" : "Схема: Wikipedia / Wikimedia";
-    }
+    elements.type.textContent = `Схематично · зачёт от ${SCHEMATIC_PASS_PERCENT}%`;
+    elements.type.classList.remove("is-coordinate");
+    elements.sourceLink.hidden = false;
+    elements.sourceLink.href = state.item.sourceUrl || "https://commons.wikimedia.org/";
+    elements.sourceLink.textContent = state.item.customReference
+      ? "Ваш эталон · исходник Wikipedia"
+      : state.item.kind === "asterism" ? "Источник: Wikipedia" : "Схема: Wikipedia / Wikimedia";
     elements.round.textContent = state.deckPosition;
     elements.phaseTwoLabel.textContent = state.item.kind === "asterism" ? "Назовите вершины" : "Найдите α-звезду";
     elements.phases[0].className = "phase is-active";
     elements.phases[1].className = "phase";
-    elements.instruction.textContent = coordinateTask
-      ? "Постройте схему точно по целым координатам из задания. Последняя точка остаётся активной."
-      : `Передайте форму созвездия. Поворот, отражение и масштаб свободны — зачёт от ${SCHEMATIC_PASS_PERCENT}%.`;
+    elements.instruction.textContent = `Передайте форму созвездия. Поворот, отражение и масштаб свободны — зачёт от ${SCHEMATIC_PASS_PERCENT}%.`;
     elements.hintButton.disabled = false;
     elements.hintButton.replaceChildren();
     const hintPlus = document.createElement("span");
@@ -982,9 +1212,7 @@
     document.body.classList.remove("modal-open");
     elements.answer.replaceChildren();
     elements.hints.replaceChildren();
-    setStatus(coordinateTask
-      ? "Поставьте первую точку. Здесь координаты и масштаб должны совпасть с эталоном."
-      : "Поставьте первую точку. Нажмите готовую вершину, чтобы продолжить новую ветвь из неё.", "");
+    setStatus("Поставьте первую точку. Нажмите готовую вершину, чтобы продолжить новую ветвь из неё.", "");
     drawGrid();
     renderDrawing();
     if (wasModalOpen) elements.sky.focus();
@@ -1012,6 +1240,25 @@
   elements.nextButton.addEventListener("click", loadNext);
   elements.expandButton.addEventListener("click", toggleExpandedSky);
   elements.coordinateForm.addEventListener("submit", addCoordinateFromForm);
+  elements.settingsButton.addEventListener("click", openReferenceSettings);
+  elements.settingsClose.addEventListener("click", () => elements.settingsDialog.close());
+  elements.referenceSelect.addEventListener("change", (event) => loadReferenceEditor(event.target.value));
+  elements.referenceSky.addEventListener("click", (event) => {
+    if (event.button !== undefined && event.button !== 0) return;
+    handleReferencePointer(event);
+  });
+  elements.referenceUndo.addEventListener("click", undoReferenceEdit);
+  elements.referenceClear.addEventListener("click", clearReferenceEditor);
+  elements.referenceAlpha.addEventListener("click", () => {
+    editor.alphaMode = !editor.alphaMode;
+    editorMessage(editor.alphaMode ? "Теперь нажмите нужную точку на поле." : "Выбор α-звезды отменён.");
+    renderReferenceEditor();
+  });
+  elements.referenceReset.addEventListener("click", resetReferenceEditor);
+  elements.referenceSave.addEventListener("click", saveReferenceEditor);
+  elements.settingsDialog.addEventListener("click", (event) => {
+    if (event.target === elements.settingsDialog) elements.settingsDialog.close();
+  });
   elements.guideButton.addEventListener("click", () => { elements.guideDialog.showModal(); startGuideDemo(); });
   elements.guideClose.addEventListener("click", () => elements.guideDialog.close());
   elements.guideStart.addEventListener("click", () => { elements.guideDialog.close(); elements.sky.focus(); });
@@ -1023,6 +1270,13 @@
   document.fonts?.ready.then(fitTaskTitle);
 
   document.addEventListener("keydown", (event) => {
+    if (elements.settingsDialog.open) {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        undoReferenceEdit();
+      }
+      return;
+    }
     if (!elements.resultPanel.hidden) {
       if (event.key === "Tab") {
         event.preventDefault();
