@@ -35,7 +35,7 @@
       </span>
     </a>
     <div class="top-stats" aria-label="Статистика тренировки">
-      <button id="settingsButton" class="guide-button" type="button">Эталоны</button>
+      <button id="settingsButton" class="guide-button" type="button">Настройки</button>
       <button id="guideButton" class="guide-button" type="button">Руководство</button>
       <span><b id="streakValue">0</b> серия</span>
       <span><b id="masteredValue">0</b> освоено</span>
@@ -46,7 +46,7 @@
     <section class="brief" aria-labelledby="taskTitle">
       <div class="task-heading">
         <div>
-          <p id="taskType" class="task-type task-mode">Схематично · зачёт от 85%</p>
+          <p id="taskType" class="task-type task-mode">Схематично · зачёт от 70%</p>
           <h1 id="taskTitle">Лебедь</h1>
         </div>
         <div class="round-count"><span id="roundIndex">1</span><small>/ <span id="roundTotal">27</span></small></div>
@@ -61,6 +61,11 @@
         <p id="instructionText">Нажимайте на звёзды по порядку. Каждое следующее нажатие добавит линию.</p>
         <p id="statusText" class="status-text">Выберите первую звезду.</p>
       </div>
+
+      <section id="starNameQuiz" class="star-name-quiz" aria-labelledby="starNamePrompt" hidden>
+        <p id="starNamePrompt">Как называется выбранная α-звезда?</p>
+        <div id="starNameChoices" class="star-name-choices"></div>
+      </section>
 
       <div class="tool-row" aria-label="Инструменты рисования">
         <button id="undoButton" class="button button-quiet" type="button">Отменить</button>
@@ -156,7 +161,7 @@
         <defs><pattern id="demoGrid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" fill="none" stroke="rgba(255,255,255,.08)"></path></pattern></defs>
         <rect class="demo-button demo-button--done" x="16" y="14" width="254" height="50" rx="10"></rect>
         <text class="demo-button-label demo-button-label--dark" x="143" y="45" text-anchor="middle">Готово — проверить</text>
-        <text class="demo-score-label" x="528" y="45" text-anchor="end">ЗАЧЁТ ≥ 85%</text>
+        <text id="demoScoreLabel" class="demo-score-label" x="528" y="45" text-anchor="end">ЗАЧЁТ ≥ 70%</text>
         <rect y="82" width="560" height="278" fill="url(#demoGrid)"></rect>
         <g class="demo-constellation">
           <line class="demo-edge" x1="240" y1="155" x2="370" y2="155"></line>
@@ -183,11 +188,26 @@
     <div class="settings-dialog__head">
       <div>
         <p class="task-type">Личные настройки</p>
-        <h2 id="settingsTitle">Эталоны созвездий</h2>
+        <h2 id="settingsTitle">Настройки и эталоны</h2>
         <p>Исходные эталоны защищены. Здесь каждый пользователь может сохранить только свой личный вариант — он не изменит общий набор и чужие схемы.</p>
       </div>
       <button id="settingsClose" class="dialog-close" type="button" aria-label="Закрыть настройки">×</button>
     </div>
+    <section class="training-preferences" aria-label="Настройки тренировки">
+      <label class="threshold-setting" for="thresholdRange">
+        <span><b>Процент зачёта</b><small>Насколько точно нужно повторить форму</small></span>
+        <output id="thresholdValue" for="thresholdRange">70%</output>
+        <input id="thresholdRange" type="range" min="50" max="100" step="5" value="70">
+      </label>
+      <fieldset class="theme-setting">
+        <legend>Тема оформления</legend>
+        <div class="theme-options">
+          <label><input type="radio" name="theme" value="system"><span>Как на устройстве</span></label>
+          <label><input type="radio" name="theme" value="dark" checked><span>Тёмная</span></label>
+          <label><input type="radio" name="theme" value="light"><span>Светлая</span></label>
+        </div>
+      </fieldset>
+    </section>
     <div class="reference-editor">
       <aside class="reference-list" aria-label="Список учебных объектов">
         <label for="referenceSelect">Созвездие или треугольник</label>
@@ -196,7 +216,7 @@
       </aside>
       <section class="reference-workbench" aria-label="Редактор эталонной схемы">
         <div class="reference-workbench__bar">
-          <div><b id="referenceTitle">Созвездие</b><span id="referenceState">Эталон Wikipedia</span></div>
+          <div><b id="referenceTitle">Созвездие</b><span id="referenceState">Защищённый авторский эталон</span></div>
           <span id="referenceCount">0 точек · 0 линий</span>
         </div>
         <div id="referenceSky" class="reference-sky" tabindex="0">
@@ -211,7 +231,7 @@
           <button id="referenceUndo" class="button button-quiet" type="button">Отменить</button>
           <button id="referenceClear" class="button button-quiet" type="button">Перерисовать</button>
           <button id="referenceAlpha" class="button button-quiet" type="button">Указать α-звезду</button>
-          <button id="referenceReset" class="button button-quiet" type="button">Вернуть Wikipedia</button>
+          <button id="referenceReset" class="button button-quiet" type="button">Вернуть авторский</button>
           <button id="referenceSave" class="button button-primary" type="button">Сохранить мой эталон</button>
         </div>
         <p id="referenceMessage" class="reference-message" role="status" aria-live="polite"></p>

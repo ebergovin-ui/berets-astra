@@ -3,6 +3,31 @@
 
   const baseObjects = window.CONSTELLATIONS.map((item) => structuredClone(item));
   const REFERENCE_STORAGE_KEY = "astra-reference-overrides-v1";
+  const PREFERENCE_STORAGE_KEY = "astra-training-preferences-v1";
+  const DEFAULT_PASS_PERCENT = 70;
+
+  function readPreferences() {
+    try {
+      const stored = JSON.parse(localStorage.getItem(PREFERENCE_STORAGE_KEY) || "{}");
+      const passPercent = Number(stored.passPercent);
+      return {
+        passPercent: Number.isFinite(passPercent) ? Math.max(50, Math.min(100, Math.round(passPercent / 5) * 5)) : DEFAULT_PASS_PERCENT,
+        theme: ["system", "dark", "light"].includes(stored.theme) ? stored.theme : "system",
+      };
+    } catch {
+      return { passPercent: DEFAULT_PASS_PERCENT, theme: "system" };
+    }
+  }
+
+  const preferences = readPreferences();
+  const systemTheme = matchMedia("(prefers-color-scheme: light)");
+  function applyTheme() {
+    document.documentElement.dataset.theme = preferences.theme === "system" ? (systemTheme.matches ? "light" : "dark") : preferences.theme;
+  }
+  function savePreferences() {
+    try { localStorage.setItem(PREFERENCE_STORAGE_KEY, JSON.stringify(preferences)); } catch { /* private mode */ }
+  }
+  applyTheme();
 
   function validReferenceOverride(value) {
     if (!value || !Array.isArray(value.points) || !Array.isArray(value.edges)) return false;
@@ -112,6 +137,13 @@
     referenceReset: $("#referenceReset"),
     referenceSave: $("#referenceSave"),
     referenceMessage: $("#referenceMessage"),
+    starNameQuiz: $("#starNameQuiz"),
+    starNamePrompt: $("#starNamePrompt"),
+    starNameChoices: $("#starNameChoices"),
+    thresholdRange: $("#thresholdRange"),
+    thresholdValue: $("#thresholdValue"),
+    themeInputs: [...document.querySelectorAll('input[name="theme"]')],
+    demoScoreLabel: $("#demoScoreLabel"),
     demoCaption: $("#demoCaption"),
     demoCursor: $(".demo-cursor"),
     demoActionButton: $(".demo-button--done"),
@@ -154,11 +186,12 @@
     guideFrame: 0,
     lastSimilarity: null,
     shapeMapping: null,
+    pendingUserIndex: null,
+    namedVertices: new Set(),
   };
 
   const GUIDE_POINTS = [[240, 155], [370, 155], [350, 260], [255, 260], [150, 140], [70, 160]];
   const GUIDE_DONE = [116, 22];
-  const SCHEMATIC_PASS_PERCENT = 85;
   const editor = {
     itemIndex: 0,
     points: [],
@@ -289,7 +322,9 @@
     elements.referenceHelp.classList.toggle("is-alpha", editor.alphaMode);
     elements.referenceHelp.textContent = editor.alphaMode
       ? "Нажмите точку, которая должна считаться α-звездой."
-      : "Нажмите любую готовую точку — она станет активной. Следующая точка продолжит линию именно из неё.";
+      : objects[editor.itemIndex]?.kind === "asterism"
+        ? `Вершины: ${objects[editor.itemIndex].vertices.map((vertex) => vertex.star).join(", ")}. Нажмите готовую точку, чтобы продолжить линию из неё.`
+        : `α-звезда: ${objects[editor.itemIndex]?.alpha}. Нажмите готовую точку, чтобы продолжить линию из неё.`;
   }
 
   function rebuildReferenceList() {
@@ -306,7 +341,7 @@
       const name = document.createElement("span");
       name.textContent = item.name;
       const status = document.createElement("small");
-      status.textContent = referenceOverrides[item.id] ? "Свой" : "Wiki";
+      status.textContent = referenceOverrides[item.id] ? "Свой" : "Автор";
       button.append(name, status);
       button.addEventListener("click", () => loadReferenceEditor(index));
       elements.referenceObjects.append(button);
@@ -327,7 +362,7 @@
     editor.alphaMode = false;
     editor.history = [];
     elements.referenceTitle.textContent = item.name;
-    elements.referenceState.textContent = referenceOverrides[item.id] ? "Ваш сохранённый эталон" : "Эталон Wikipedia / Wikimedia";
+    elements.referenceState.textContent = referenceOverrides[item.id] ? "Ваш сохранённый эталон" : "Защищённый авторский эталон";
     editorMessage("");
     rebuildReferenceList();
     renderReferenceEditor();
@@ -464,7 +499,7 @@
     Object.keys(item).forEach((key) => delete item[key]);
     Object.assign(item, original);
     loadReferenceEditor(editor.itemIndex);
-    editorMessage("Возвращён исходный эталон Wikipedia / Wikimedia.", "success");
+    editorMessage("Возвращён защищённый авторский эталон.", "success");
     if (state.item?.id === item.id) {
       state.item = item;
       clearDrawing();
@@ -474,6 +509,9 @@
   function openReferenceSettings() {
     const currentIndex = Math.max(0, objects.findIndex((item) => item.id === state.item?.id));
     loadReferenceEditor(currentIndex);
+    elements.thresholdRange.value = String(preferences.passPercent);
+    elements.thresholdValue.textContent = `${preferences.passPercent}%`;
+    elements.themeInputs.forEach((input) => { input.checked = input.value === preferences.theme; });
     elements.settingsDialog.showModal();
   }
 
@@ -1020,7 +1058,7 @@
     return window.ASTRA_SHAPE_MATCHER.evaluate(
       state.item,
       { points: state.points, edges: state.edges },
-      SCHEMATIC_PASS_PERCENT,
+      preferences.passPercent,
     );
   }
 
@@ -1055,26 +1093,74 @@
     elements.undoButton.disabled = true;
     elements.clearButton.disabled = true;
     elements.doneButton.disabled = true;
+    elements.starNameQuiz.hidden = true;
     elements.instruction.textContent = state.item.kind === "asterism"
-      ? "Отметьте все три вершины — результат проверится автоматически."
-      : "Выберите α-звезду — результат проверится сразу.";
-    setStatus(state.item.kind === "asterism" ? "Выбрано вершин: 0 из 3." : "Выберите одну светящуюся точку.", "success");
+      ? "Выберите каждую вершину и укажите название её звезды."
+      : "Выберите положение α-звезды, затем укажите её название.";
+    setStatus(state.item.kind === "asterism" ? "Названо вершин: 0 из 3." : "Сначала выберите одну светящуюся точку.", "success");
     renderDrawing();
-    showToast(`Сходство ${state.lastSimilarity}%`, state.item.kind === "asterism" ? "Теперь отметьте три вершины." : "Форма зачтена. Теперь выберите α-звезду.", "success", 4200);
+    showToast(`Сходство ${state.lastSimilarity}%`, state.item.kind === "asterism" ? "Теперь назовите три вершины." : "Форма зачтена. Теперь найдите и назовите α-звезду.", "success", 4200);
   }
 
   function toggleIdentification(index) {
     if (state.item.kind === "asterism") {
-      if (state.selected.has(index)) state.selected.delete(index);
-      else state.selected.add(index);
-      setStatus(`Выбрано вершин: ${state.selected.size} из 3.`, "");
+      if (state.namedVertices.has(index)) {
+        setStatus("Эта вершина уже названа. Выберите другую.", "");
+        return;
+      }
+      const referenceIndex = state.shapeMapping?.findIndex((userIndex) => userIndex === index);
+      const resolvedReferenceIndex = referenceIndex >= 0 ? referenceIndex : referenceIndexForUser(index);
+      const vertex = state.item.vertices[resolvedReferenceIndex];
+      if (!vertex) return;
+      state.pendingUserIndex = index;
+      state.selected.clear();
+      state.namedVertices.forEach((namedIndex) => state.selected.add(namedIndex));
+      state.selected.add(index);
       renderDrawing();
-      if (state.selected.size === 3) finishRound();
+      beginNameQuiz(vertex.star, `Как называется звезда в выбранной вершине?`, () => {
+        state.namedVertices.add(index);
+        state.selected = new Set(state.namedVertices);
+        state.pendingUserIndex = null;
+        elements.starNameQuiz.hidden = true;
+        renderDrawing();
+        if (state.namedVertices.size === 3) finishRound();
+        else setStatus(`Названо вершин: ${state.namedVertices.size} из 3. Выберите следующую.`, "success");
+      });
     } else {
       state.selected.clear();
       state.selected.add(index);
       checkIdentification(index);
     }
+  }
+
+  function alphaNamePool() {
+    return [...new Set(objects.flatMap((item) => item.kind === "asterism" ? item.vertices.map((vertex) => vertex.star) : [item.alpha]).filter(Boolean))];
+  }
+
+  function beginNameQuiz(correctName, prompt, onCorrect) {
+    const distractors = shuffle(alphaNamePool().filter((name) => name !== correctName)).slice(0, 4);
+    const choices = shuffle([correctName, ...distractors]);
+    elements.starNamePrompt.textContent = prompt;
+    elements.starNameChoices.replaceChildren();
+    choices.forEach((name) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = name;
+      button.addEventListener("click", () => {
+        if (name !== correctName) {
+          state.failedChecks += 1;
+          button.classList.add("is-wrong");
+          button.disabled = true;
+          setStatus(`«${name}» — неверно. Выберите другое название.`, "error");
+          return;
+        }
+        button.classList.add("is-correct");
+        onCorrect();
+      });
+      elements.starNameChoices.append(button);
+    });
+    elements.starNameQuiz.hidden = false;
+    elements.starNameChoices.querySelector("button")?.focus();
   }
 
   function nodeSignature(points, index) {
@@ -1103,9 +1189,10 @@
 
   function checkIdentification(selected) {
     const expected = alphaCandidate();
-    if (selected !== expected) {
+    if (!state.item.alphaAnyPoint && selected !== expected) {
       state.failedChecks += 1;
       state.wrongIndices.add(selected);
+      elements.starNameQuiz.hidden = true;
       setStatus(`Выбрана не «${state.item.alpha}». Попробуйте другую точку.`, "error");
       renderDrawing();
       showToast("Не та звезда", `Выбрана не «${state.item.alpha}».`, "error", 4000);
@@ -1114,7 +1201,7 @@
     state.wrongIndices.delete(selected);
     renderDrawing();
     elements.stars.querySelector(`[data-index="${selected}"]`)?.classList.add("is-alpha");
-    finishRound();
+    beginNameQuiz(state.item.alpha, "Как называется выбранная α-звезда?", finishRound);
   }
 
   function renderAnswerFact() {
@@ -1139,6 +1226,7 @@
   }
 
   function finishRound() {
+    elements.starNameQuiz.hidden = true;
     clearTimeout(state.toastTimer);
     elements.feedbackToast.classList.remove("is-visible");
     elements.feedbackToast.hidden = true;
@@ -1150,7 +1238,7 @@
     elements.resultTitle.textContent = clean ? "Точно" : "Готово";
     const similarityNote = Number.isFinite(state.lastSimilarity) ? ` Сходство — ${state.lastSimilarity}%.` : "";
     elements.resultText.textContent = clean
-      ? `Форма совпала, а ключевая звезда отмечена верно.${similarityNote}`
+      ? `Форма совпала, а ключевая звезда отмечена и названа верно.${similarityNote}`
       : `Схема разобрана. Повторите её позже без подсказки, чтобы закрепить.${similarityNote}`;
     renderAnswerFact();
     state.previousFocus = document.activeElement;
@@ -1228,22 +1316,24 @@
     state.newEdgeKey = null;
     state.lastSimilarity = null;
     state.shapeMapping = null;
+    state.pendingUserIndex = null;
+    state.namedVertices = new Set();
+    elements.starNameQuiz.hidden = true;
+    elements.starNameChoices.replaceChildren();
     elements.title.textContent = state.item.name;
     elements.title.classList.toggle("is-medium", state.item.name.length > 8 && state.item.name.length <= 14);
     elements.title.classList.toggle("is-long", state.item.name.length > 14);
     fitTaskTitle();
-    elements.type.textContent = `Схематично · зачёт от ${SCHEMATIC_PASS_PERCENT}%`;
+    elements.type.textContent = `Схематично · зачёт от ${preferences.passPercent}%`;
     elements.type.classList.remove("is-coordinate");
     elements.sourceLink.hidden = false;
     elements.sourceLink.href = state.item.sourceUrl || "https://commons.wikimedia.org/";
-    elements.sourceLink.textContent = state.item.customReference
-      ? "Ваш эталон · исходник Wikipedia"
-      : state.item.kind === "asterism" ? "Источник: Wikipedia" : "Схема: Wikipedia / Wikimedia";
+    elements.sourceLink.textContent = state.item.customReference ? "Ваш личный эталон" : "Защищённый авторский эталон";
     elements.round.textContent = state.deckPosition;
-    elements.phaseTwoLabel.textContent = state.item.kind === "asterism" ? "Назовите вершины" : "Найдите α-звезду";
+    elements.phaseTwoLabel.textContent = state.item.kind === "asterism" ? "Назовите 3 α-звезды" : "Найдите и назовите α-звезду";
     elements.phases[0].className = "phase is-active";
     elements.phases[1].className = "phase";
-    elements.instruction.textContent = `Передайте форму созвездия. Поворот, отражение и масштаб свободны — зачёт от ${SCHEMATIC_PASS_PERCENT}%.`;
+    elements.instruction.textContent = `Передайте форму созвездия. Поворот, отражение и масштаб свободны — зачёт от ${preferences.passPercent}%.`;
     elements.hintButton.disabled = false;
     elements.hintButton.replaceChildren();
     const hintPlus = document.createElement("span");
@@ -1308,6 +1398,23 @@
   });
   elements.referenceReset.addEventListener("click", resetReferenceEditor);
   elements.referenceSave.addEventListener("click", saveReferenceEditor);
+  elements.thresholdRange.addEventListener("input", () => {
+    preferences.passPercent = Number(elements.thresholdRange.value);
+    elements.thresholdValue.textContent = `${preferences.passPercent}%`;
+    elements.demoScoreLabel.textContent = `ЗАЧЁТ ≥ ${preferences.passPercent}%`;
+    savePreferences();
+    if (state.phase === "draw") {
+      elements.type.textContent = `Схематично · зачёт от ${preferences.passPercent}%`;
+      elements.instruction.textContent = `Передайте форму созвездия. Поворот, отражение и масштаб свободны — зачёт от ${preferences.passPercent}%.`;
+    }
+  });
+  elements.themeInputs.forEach((input) => input.addEventListener("change", () => {
+    if (!input.checked) return;
+    preferences.theme = input.value;
+    savePreferences();
+    applyTheme();
+  }));
+  systemTheme.addEventListener?.("change", () => { if (preferences.theme === "system") applyTheme(); });
   elements.settingsDialog.addEventListener("click", (event) => {
     if (event.target === elements.settingsDialog) elements.settingsDialog.close();
   });
@@ -1358,6 +1465,7 @@
   });
 
   populateCoordinateLists();
+  elements.demoScoreLabel.textContent = `ЗАЧЁТ ≥ ${preferences.passPercent}%`;
   elements.roundTotal.textContent = objects.length;
   saveStats();
   loadNext();

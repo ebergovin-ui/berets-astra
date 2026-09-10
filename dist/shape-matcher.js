@@ -111,7 +111,23 @@
     return Math.min(84, clampPercent((pointRatio * .45 + edgeRatio * .55) * 84));
   }
 
-  function evaluate(reference, user, passPercent = 85) {
+  function segmentIntersectionFeature(points, edges) {
+    if (edges.length !== 2 || edges.some(([a, b]) => !points[a] || !points[b])) return null;
+    const [a, b] = edges[0].map((index) => points[index]);
+    const [c, d] = edges[1].map((index) => points[index]);
+    const r = { x: b.x - a.x, y: b.y - a.y };
+    const s = { x: d.x - c.x, y: d.y - c.y };
+    const cross = (u, v) => u.x * v.y - u.y * v.x;
+    const denominator = cross(r, s);
+    if (Math.abs(denominator) < 1e-9) return { crosses: false, ratios: [] };
+    const offset = { x: c.x - a.x, y: c.y - a.y };
+    const t = cross(offset, s) / denominator;
+    const u = cross(offset, r) / denominator;
+    const crosses = t >= 0 && t <= 1 && u >= 0 && u <= 1;
+    return { crosses, ratios: crosses ? [Math.min(t, 1 - t), Math.min(u, 1 - u)].sort((x, y) => x - y) : [] };
+  }
+
+  function evaluate(reference, user, passPercent = 70) {
     if (reference.points.length !== user.points.length || reference.edges.length !== user.edges.length) {
       const similarity = incompleteSimilarity(reference, user);
       return {
@@ -127,14 +143,28 @@
       const userDegrees = adjacency(user.points.length, user.edges).map((neighbors) => neighbors.size).sort((a, b) => a - b);
       const matchingDegrees = refDegrees.filter((degree, index) => degree === userDegrees[index]).length;
       const similarity = Math.min(84, clampPercent(48 + 36 * matchingDegrees / Math.max(refDegrees.length, 1)));
-      return { ok: false, similarity, mapping: null, reason: `Сходство ${similarity}%. Некоторые вершины соединены не так, как на схеме Wikipedia.` };
+      return { ok: false, similarity, mapping: null, reason: `Сходство ${similarity}%. Некоторые вершины соединены не так, как в авторском эталоне.` };
+    }
+    if (reference.points.length === 2 && reference.edges.length === 1) {
+      return { ok: true, similarity: 100, mapping: mappings[0] };
     }
     let best = { residual: Infinity, mapping: null };
     mappings.forEach((mapping) => {
       const residual = procrustesResidual(reference.points, user.points, mapping);
       if (residual < best.residual) best = { residual, mapping };
     });
-    const similarity = clampPercent(100 - best.residual * 100);
+    let similarity = clampPercent(100 - best.residual * 100);
+    const referenceIntersection = segmentIntersectionFeature(reference.points, reference.edges);
+    if (referenceIntersection?.crosses) {
+      const userIntersection = segmentIntersectionFeature(user.points, user.edges);
+      if (!userIntersection?.crosses) {
+        similarity = Math.min(similarity, 55);
+      } else {
+        const ratioError = referenceIntersection.ratios.reduce((sum, value, index) => sum + Math.abs(value - userIntersection.ratios[index]), 0) / 2;
+        const intersectionSimilarity = clampPercent(100 - ratioError * 200);
+        similarity = clampPercent(similarity * .65 + intersectionSimilarity * .35);
+      }
+    }
     return similarity >= passPercent
       ? { ok: true, similarity, mapping: best.mapping }
       : {
@@ -145,5 +175,5 @@
         };
   }
 
-  return { evaluate, graphMappings, procrustesResidual, edgeKey };
+  return { evaluate, graphMappings, procrustesResidual, segmentIntersectionFeature, edgeKey };
 });

@@ -15,6 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / ".source-data"
+AUTHOR_SCHEMES = json.loads((Path(__file__).with_name("author_schemes.json")).read_text(encoding="utf-8"))
 
 TARGETS = [
     ("Cyg", "Лебедь", "Денеб"),
@@ -431,9 +432,25 @@ def main():
         },
     ])
 
+    # The author redrew the complete teaching set in the browser. These
+    # reviewed integer-grid figures are now the protected public baseline;
+    # visitors can still layer private browser-only copies over them.
+    for item in output:
+        scheme = AUTHOR_SCHEMES.get(item["id"])
+        if not scheme:
+            continue
+        item["points"] = [{"x": x, "y": y} for x, y in scheme["points"]]
+        item["edges"] = [list(edge) for edge in scheme["edges"]]
+        item["source"] = "author-reference"
+        if item["kind"] == "constellation":
+            item["alphaIndex"] = scheme["alphaIndex"]
+            item["alphaAnyPoint"] = bool(scheme.get("alphaAnyPoint", False))
+            item["pointNames"] = [f"Звезда №{index + 1}" for index in range(len(item["points"]))]
+            item["pointNames"][item["alphaIndex"]] = item["alpha"]
+
     payload = json.dumps(output, ensure_ascii=False, separators=(",", ":"))
     (ROOT / "constellations.js").write_text(
-        "// Geometry uses Wikipedia/Wikimedia constellation maps. See README.md.\n"
+        "// Protected author references, originally based on Wikipedia/Wikimedia maps. See README.md.\n"
         f"window.CONSTELLATIONS={payload};\n",
         encoding="utf-8",
     )
