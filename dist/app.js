@@ -164,6 +164,9 @@
     points: [],
     edges: [],
     active: null,
+    chainStart: null,
+    chainEdges: 0,
+    branchArmed: false,
     alphaIndex: null,
     alphaMode: false,
     history: [],
@@ -231,6 +234,9 @@
       points: structuredClone(editor.points),
       edges: structuredClone(editor.edges),
       active: editor.active,
+      chainStart: editor.chainStart,
+      chainEdges: editor.chainEdges,
+      branchArmed: editor.branchArmed,
       alphaIndex: editor.alphaIndex,
     });
     if (editor.history.length > 60) editor.history.shift();
@@ -283,7 +289,7 @@
     elements.referenceHelp.classList.toggle("is-alpha", editor.alphaMode);
     elements.referenceHelp.textContent = editor.alphaMode
       ? "Нажмите точку, которая должна считаться α-звездой."
-      : "Нажмите активную точку ещё раз, чтобы снять выбор. Затем выберите любую вершину и продолжите новую ветвь из неё.";
+      : "Нажмите любую готовую точку — она станет активной. Следующая точка продолжит линию именно из неё.";
   }
 
   function rebuildReferenceList() {
@@ -314,6 +320,9 @@
     editor.points = structuredClone(item.points);
     editor.edges = structuredClone(item.edges);
     editor.active = null;
+    editor.chainStart = null;
+    editor.chainEdges = 0;
+    editor.branchArmed = false;
     editor.alphaIndex = item.kind === "constellation" ? item.alphaIndex : null;
     editor.alphaMode = false;
     editor.history = [];
@@ -341,21 +350,58 @@
       renderReferenceEditor();
       return;
     }
-    editorSnapshot();
     if (existing >= 0) {
-      if (editor.active === existing) editor.active = null;
-      else if (editor.active === null) editor.active = existing;
-      else {
+      if (editor.active === existing) {
+        editorSnapshot();
+        editor.active = null;
+        editor.chainStart = null;
+        editor.chainEdges = 0;
+        editor.branchArmed = false;
+        editorMessage(`Точка ${existing + 1} снята с выбора.`);
+      } else if (editor.active === null) {
+        editorSnapshot();
+        editor.active = existing;
+        editor.chainStart = existing;
+        editor.chainEdges = 0;
+        editor.branchArmed = true;
+        editorMessage(`Выбрана точка ${existing + 1}. Продолжайте линию из неё.`);
+      } else if (editor.branchArmed || (existing === editor.chainStart && editor.chainEdges >= 2)) {
+        editorSnapshot();
         const key = edgeKey(editor.active, existing);
         if (!editor.edges.some(([a, b]) => edgeKey(a, b) === key)) editor.edges.push([editor.active, existing]);
+        const closedContour = existing === editor.chainStart && editor.chainEdges >= 2;
+        editor.chainEdges += 1;
+        editor.branchArmed = false;
+        editor.active = closedContour ? null : existing;
+        if (closedContour) {
+          editor.chainStart = null;
+          editor.chainEdges = 0;
+          editorMessage("Контур замкнут. Выберите любую вершину для новой ветви.");
+        } else {
+          editorMessage(`Линия продолжена до точки ${existing + 1}.`);
+        }
+      } else {
+        editorSnapshot();
         editor.active = existing;
+        editor.chainStart = existing;
+        editor.chainEdges = 0;
+        editor.branchArmed = true;
+        editorMessage(`Активная вершина переключена на точку ${existing + 1}.`);
       }
     } else {
+      editorSnapshot();
       const index = editor.points.push(point) - 1;
-      if (editor.active !== null) editor.edges.push([editor.active, index]);
+      if (editor.active !== null) {
+        editor.edges.push([editor.active, index]);
+        editor.chainEdges += 1;
+      } else {
+        editor.chainStart = index;
+        editor.chainEdges = 0;
+      }
       editor.active = index;
+      editor.branchArmed = false;
+      editorMessage(`Поставлена точка ${index + 1}.`);
     }
-    editorMessage("");
     renderReferenceEditor();
   }
 
@@ -365,6 +411,9 @@
     editor.points = previous.points;
     editor.edges = previous.edges;
     editor.active = previous.active;
+    editor.chainStart = previous.chainStart;
+    editor.chainEdges = previous.chainEdges;
+    editor.branchArmed = previous.branchArmed;
     editor.alphaIndex = previous.alphaIndex;
     editor.alphaMode = false;
     editorMessage("Последнее действие отменено.");
@@ -376,6 +425,9 @@
     editor.points = [];
     editor.edges = [];
     editor.active = null;
+    editor.chainStart = null;
+    editor.chainEdges = 0;
+    editor.branchArmed = false;
     editor.alphaIndex = null;
     editor.alphaMode = false;
     editorMessage("Поле очищено. Поставьте первую точку.");

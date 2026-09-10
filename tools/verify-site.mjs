@@ -81,5 +81,8 @@ if (!app.includes("branchArmed") || !app.includes("Контур замкнут")
 if (!html.includes('id="roundTotal">27</span>')) throw new Error("The 27-task deck total is missing");
 if (!html.includes('id="settingsDialog"') || !html.includes('id="referenceSave"')) throw new Error("Reference editor settings are missing");
 if (!app.includes("REFERENCE_STORAGE_KEY") || !app.includes("saveReferenceEditor") || !app.includes("resetReferenceEditor")) throw new Error("Persistent custom reference workflow is missing");
+if (!app.includes("Активная вершина переключена") || !app.includes("editor.branchArmed") || !html.includes("Сохранить мой эталон")) {
+  throw new Error("Reference editor must support branch switching and isolated personal saves");
+}
 
-console.log("Verified: CSP, safe DOM sinks, 27 schematic tasks, corrected Wikipedia figures, custom reference editor, branch drawing and square grid.");
+console.log("Verified: CSP, safe DOM sinks, 27 schematic tasks, corrected Wikipedia figures, protected personal references, branch switching and square grid.");
