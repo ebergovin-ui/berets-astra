@@ -14,6 +14,8 @@ colors:
   signal-ink: "#171300"
   error-coral: "#ff6d60"
   success-lime: "#c7ff5e"
+  active-orange: "#ff8a1f"
+  naming-pink: "#ff3da6"
 typography:
   display:
     fontFamily: "Unbounded Local, Arial Narrow, sans-serif"
@@ -141,6 +143,8 @@ components:
 **The Rare Signal Rule.** Сигнальный жёлтый отмечает только действие, фокус или активное состояние; не превращайте его в сплошной декоративный фон.
 
 **The Semantic Flash Rule.** Коралловый и лаймовый появляются только как результат проверки и никогда не конкурируют с основным жёлтым акцентом заранее.
+
+**The Point State Rule.** Оранжевый означает активную вершину, из которой продолжается линия; ярко-розовый означает звезду, название которой пользователь выбирает прямо сейчас.
 
 ## Typography
 

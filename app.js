@@ -12,10 +12,10 @@
       const passPercent = Number(stored.passPercent);
       return {
         passPercent: Number.isFinite(passPercent) ? Math.max(50, Math.min(100, Math.round(passPercent / 5) * 5)) : DEFAULT_PASS_PERCENT,
-        theme: ["system", "dark", "light"].includes(stored.theme) ? stored.theme : "system",
+        theme: ["system", "dark", "light"].includes(stored.theme) ? stored.theme : "dark",
       };
     } catch {
-      return { passPercent: DEFAULT_PASS_PERCENT, theme: "system" };
+      return { passPercent: DEFAULT_PASS_PERCENT, theme: "dark" };
     }
   }
 
@@ -190,8 +190,8 @@
     namedVertices: new Set(),
   };
 
-  const GUIDE_POINTS = [[240, 155], [370, 155], [350, 260], [255, 260], [150, 140], [70, 160]];
-  const GUIDE_DONE = [116, 22];
+  const GUIDE_POINTS = [[646, 248], [764, 287], [697, 379], [629, 353], [528, 169], [697, 103], [832, 248], [883, 221], [933, 300], [680, 471], [528, 497], [528, 392], [461, 313], [461, 274], [427, 261]];
+  const GUIDE_DONE = [190, 419];
   const editor = {
     itemIndex: 0,
     points: [],
@@ -545,17 +545,20 @@
 
   function guideFrames() {
     const frames = [{ reset: true, delay: 850 }];
-    GUIDE_POINTS.slice(0, 4).forEach((point, index) => {
-      frames.push({ cursor: point, click: true, star: index, activate: index, edge: index > 0 ? index - 1 : null, label: index === 0 ? "Первая точка становится активной" : "Новая точка соединяется с активной", delay: 780 });
-    });
-    frames.push({ cursor: GUIDE_POINTS[0], click: true, edge: 3, deactivate: true, label: "Нажатие первой точки замыкает контур", delay: 760 });
-    frames.push({ cursor: GUIDE_POINTS[0], activate: 0, click: true, label: "Нажмите вершину ещё раз — начните новую ветвь", delay: 900 });
-    GUIDE_POINTS.slice(4).forEach((point, offset) => {
-      const index = offset + 4;
-      frames.push({ cursor: point, click: true, star: index, activate: index, edge: index, label: "Продолжайте линию из выбранной вершины", delay: 760 });
-    });
+    const addPoint = (index, edge, label = "Новая точка соединяется с активной") => frames.push({ cursor: GUIDE_POINTS[index], click: true, star: index, activate: index, edge, label, delay: 620 });
+    addPoint(0, null, "Первая точка становится активной и светится оранжевым");
+    addPoint(1, 0); addPoint(2, 1); addPoint(3, 2);
+    frames.push({ cursor: GUIDE_POINTS[0], click: true, edge: 3, deactivate: true, label: "Замкните центральный контур", delay: 650 });
+    const branch = (root, points, edges) => {
+      frames.push({ cursor: GUIDE_POINTS[root], activate: root, click: true, label: "Нажмите готовую вершину — она станет оранжевой", delay: 760 });
+      points.forEach((pointIndex, offset) => addPoint(pointIndex, edges[offset], "Продолжайте новую ветвь из выбранной вершины"));
+    };
+    branch(0, [4, 5], [4, 5]);
+    branch(1, [6, 7, 8], [6, 7, 8]);
+    branch(2, [9, 10], [9, 10]);
+    branch(3, [11, 12, 13, 14], [11, 12, 13, 14]);
     frames.push({ cursor: GUIDE_DONE, press: "done", label: "Когда рисунок готов — нажмите «Готово»", delay: 700 });
-    frames.push({ label: "Сходство 96% · форма зачтена", delay: 1400 });
+    frames.push({ label: "Сходство 100% · форма Геркулеса зачтена", delay: 1500 });
     return frames;
   }
 
@@ -660,7 +663,7 @@
     });
     state.points.forEach((point, index) => {
       const pos = toSvg(point);
-      const group = svgElement("g", { class: `user-point${index === state.active ? " is-active" : ""}${state.selected.has(index) ? " is-marked" : ""}${state.wrongIndices.has(index) ? " is-wrong" : ""}${state.phase === "identify" ? " is-ready" : ""}`, "data-index": index });
+      const group = svgElement("g", { class: `user-point${index === state.active ? " is-active" : ""}${state.selected.has(index) ? " is-marked" : ""}${state.namedVertices.has(index) ? " is-named" : ""}${state.pendingUserIndex === index ? " is-naming" : ""}${state.wrongIndices.has(index) ? " is-wrong" : ""}${state.phase === "identify" ? " is-ready" : ""}`, "data-index": index });
       group.append(svgElement("circle", { cx: pos.x, cy: pos.y, r: 22, class: "point-hit" }));
       group.append(svgElement("circle", { cx: pos.x, cy: pos.y, r: 7, class: "point-core" }));
       const label = svgElement("text", { x: pos.x + 13, y: pos.y - 12, class: "point-label" });
@@ -1097,9 +1100,13 @@
     elements.instruction.textContent = state.item.kind === "asterism"
       ? "Выберите каждую вершину и укажите название её звезды."
       : "Выберите положение α-звезды, затем укажите её название.";
-    setStatus(state.item.kind === "asterism" ? "Названо вершин: 0 из 3." : "Сначала выберите одну светящуюся точку.", "success");
+    setStatus(state.item.kind === "asterism" ? "Первая вершина выбрана автоматически. Укажите название выделенной розовым звезды." : "Найдите на схеме α-звезду.", "success");
     renderDrawing();
     showToast(`Сходство ${state.lastSimilarity}%`, state.item.kind === "asterism" ? "Теперь назовите три вершины." : "Форма зачтена. Теперь найдите и назовите α-звезду.", "success", 4200);
+    if (state.item.kind === "asterism") {
+      const firstUserIndex = Number.isInteger(state.shapeMapping?.[0]) ? state.shapeMapping[0] : 0;
+      toggleIdentification(firstUserIndex);
+    }
   }
 
   function toggleIdentification(index) {
@@ -1117,14 +1124,20 @@
       state.namedVertices.forEach((namedIndex) => state.selected.add(namedIndex));
       state.selected.add(index);
       renderDrawing();
+      setStatus(`Выберите название звезды, выделенной розовым. Названо вершин: ${state.namedVertices.size} из 3.`, "success");
       beginNameQuiz(vertex.star, `Как называется звезда в выбранной вершине?`, () => {
         state.namedVertices.add(index);
         state.selected = new Set(state.namedVertices);
         state.pendingUserIndex = null;
         elements.starNameQuiz.hidden = true;
         renderDrawing();
-        if (state.namedVertices.size === 3) finishRound();
-        else setStatus(`Названо вершин: ${state.namedVertices.size} из 3. Выберите следующую.`, "success");
+        if (state.namedVertices.size === 3) {
+          finishRound();
+        } else {
+          const nextIndex = state.points.findIndex((_, pointIndex) => !state.namedVertices.has(pointIndex));
+          setStatus(`Названо вершин: ${state.namedVertices.size} из 3. Следующая звезда выбрана автоматически.`, "success");
+          toggleIdentification(nextIndex);
+        }
       });
     } else {
       state.selected.clear();
@@ -1188,19 +1201,21 @@
   }
 
   function checkIdentification(selected) {
+    state.pendingUserIndex = null;
     const expected = alphaCandidate();
     if (!state.item.alphaAnyPoint && selected !== expected) {
       state.failedChecks += 1;
       state.wrongIndices.add(selected);
       elements.starNameQuiz.hidden = true;
-      setStatus(`Выбрана не «${state.item.alpha}». Попробуйте другую точку.`, "error");
+      setStatus("Выбрана не α-звезда. Попробуйте другую точку.", "error");
       renderDrawing();
-      showToast("Не та звезда", `Выбрана не «${state.item.alpha}».`, "error", 4000);
+      showToast("Не та звезда", "Это не α-звезда. Выберите другую точку.", "error", 4000);
       return;
     }
     state.wrongIndices.delete(selected);
+    state.pendingUserIndex = selected;
     renderDrawing();
-    elements.stars.querySelector(`[data-index="${selected}"]`)?.classList.add("is-alpha");
+    setStatus("Положение α-звезды выбрано. Теперь укажите её название.", "success");
     beginNameQuiz(state.item.alpha, "Как называется выбранная α-звезда?", finishRound);
   }
 

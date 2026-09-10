@@ -58,9 +58,12 @@ if (!app.includes("connection-guide")) throw new Error("Missing animated guide f
 if (!html.includes('id="skipButton"') || !html.includes('id="doneButton"') || html.includes('id="liftButton"')) throw new Error("Done and skip must remain and the obsolete break-line button must be removed");
 if (html.includes("<details class=\"coordinate-entry-shell\"")) throw new Error("Coordinate entry must always be visible");
 if (!html.includes("guide-demo__screen")) throw new Error("Animated visual guide is missing");
-if (!app.includes("resetGuideDemo") || !app.includes("Нажмите вершину ещё раз") || !app.includes("Сходство 96%")) throw new Error("Guide must demonstrate branch switching and final similarity");
+if (!app.includes("resetGuideDemo") || !app.includes("Нажмите готовую вершину — она станет оранжевой") || !app.includes("форма Геркулеса зачтена")) throw new Error("Guide must demonstrate Hercules branch switching and final similarity");
+if ((html.match(/class="demo-star"/g) || []).length !== 15 || (html.match(/class="demo-edge"/g) || []).length !== 15) throw new Error("Guide must show the full 15-point Hercules schematic");
 if (!app.includes("DEFAULT_PASS_PERCENT = 70") || !app.includes("preferences.passPercent") || app.includes("evaluateCoordinateShape")) throw new Error("Adjustable 70% transform-invariant grading must remain");
 if (!html.includes('id="thresholdRange"') || !html.includes('name="theme"') || !html.includes('id="starNameChoices"')) throw new Error("Training threshold, theme and alpha-name quiz controls are missing");
+if (!app.includes('theme: "dark"') || !app.includes("Первая вершина выбрана автоматически") || !app.includes("state.pendingUserIndex === index")) throw new Error("Dark default and automatic pink naming focus are missing");
+if (app.includes("Выбрана не «${state.item.alpha}»")) throw new Error("Wrong alpha-position feedback must not reveal the answer");
 if (!matcher.includes("reference.points.length === 2") || !matcher.includes("segmentIntersectionFeature")) throw new Error("Segment and crossing-aware scoring rules are missing");
 if (!app.includes("branchArmed") || !app.includes("Контур замкнут")) throw new Error("Automatic branch and contour interaction is missing");
 if (!html.includes('id="roundTotal">27</span>')) throw new Error("The 27-task deck total is missing");

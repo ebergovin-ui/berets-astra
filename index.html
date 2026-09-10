@@ -156,26 +156,47 @@
       <div><p class="task-type">BERETS / АСТРА</p><h2 id="guideTitle">Руководство</h2></div>
       <button id="guideClose" type="button" aria-label="Закрыть руководство">×</button>
     </div>
-    <div class="guide-demo" role="img" aria-label="Анимация: пользователь строит созвездие, выбирает уже поставленную вершину, продолжает из неё новую ветвь и нажимает Готово">
-      <svg class="guide-demo__screen" viewBox="0 0 560 360" aria-hidden="true">
-        <defs><pattern id="demoGrid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" fill="none" stroke="rgba(255,255,255,.08)"></path></pattern></defs>
-        <rect class="demo-button demo-button--done" x="16" y="14" width="254" height="50" rx="10"></rect>
-        <text class="demo-button-label demo-button-label--dark" x="143" y="45" text-anchor="middle">Готово — проверить</text>
-        <text id="demoScoreLabel" class="demo-score-label" x="528" y="45" text-anchor="end">ЗАЧЁТ ≥ 70%</text>
-        <rect y="82" width="560" height="278" fill="url(#demoGrid)"></rect>
-        <g class="demo-constellation">
-          <line class="demo-edge" x1="240" y1="155" x2="370" y2="155"></line>
-          <line class="demo-edge" x1="370" y1="155" x2="350" y2="260"></line>
-          <line class="demo-edge" x1="350" y1="260" x2="255" y2="260"></line>
-          <line class="demo-edge" x1="255" y1="260" x2="240" y2="155"></line>
-          <line class="demo-edge" x1="240" y1="155" x2="150" y2="140"></line>
-          <line class="demo-edge" x1="150" y1="140" x2="70" y2="160"></line>
-          <circle class="demo-star" cx="240" cy="155" r="8"></circle>
-          <circle class="demo-star" cx="370" cy="155" r="8"></circle>
-          <circle class="demo-star" cx="350" cy="260" r="8"></circle>
-          <circle class="demo-star" cx="255" cy="260" r="8"></circle>
-          <circle class="demo-star" cx="150" cy="140" r="8"></circle>
-          <circle class="demo-star" cx="70" cy="160" r="8"></circle>
+    <div class="guide-demo" role="img" aria-label="Анимация полного экрана тренажёра: пользователь строит Геркулеса, выбирает готовые вершины, продолжает из них новые ветви и нажимает Готово">
+      <svg class="guide-demo__screen" viewBox="0 0 1000 560" aria-hidden="true">
+        <defs><pattern id="demoGrid" width="18" height="18" patternUnits="userSpaceOnUse"><path d="M18 0H0V18" fill="none" stroke="rgba(255,255,255,.07)"></path></pattern></defs>
+        <rect class="demo-screen-bg" width="1000" height="560"></rect>
+        <line class="demo-divider" x1="20" y1="56" x2="980" y2="56"></line>
+        <text class="demo-brand" x="28" y="36">BERETS / АСТРА</text>
+        <text id="demoScoreLabel" class="demo-score-label" x="970" y="36" text-anchor="end">ЗАЧЁТ ≥ 70%</text>
+        <g class="demo-control-panel">
+          <text class="demo-kicker" x="30" y="105">СОЗВЕЗДИЕ</text>
+          <text class="demo-title" x="30" y="154">Геркулес</text>
+          <line class="demo-divider" x1="30" y1="182" x2="350" y2="182"></line>
+          <text class="demo-step demo-step--active" x="30" y="215">1  СОЕДИНИТЕ ЗВЁЗДЫ</text>
+          <text class="demo-step" x="205" y="215">2  НАЗОВИТЕ α-ЗВЕЗДУ</text>
+          <line class="demo-active-line" x1="30" y1="231" x2="188" y2="231"></line>
+          <text class="demo-copy" x="30" y="268">Поставьте точки и соедините их.</text>
+          <text class="demo-copy" x="30" y="290">Нажмите готовую вершину, чтобы</text>
+          <text class="demo-copy" x="30" y="312">продолжить из неё новую ветвь.</text>
+          <rect class="demo-small-button" x="30" y="340" width="150" height="42" rx="8"></rect>
+          <rect class="demo-small-button" x="190" y="340" width="160" height="42" rx="8"></rect>
+          <text class="demo-button-label" x="105" y="366" text-anchor="middle">Отменить</text>
+          <text class="demo-button-label" x="270" y="366" text-anchor="middle">Очистить</text>
+          <rect class="demo-button demo-button--done" x="30" y="395" width="320" height="48" rx="9"></rect>
+          <text class="demo-button-label demo-button-label--dark" x="190" y="425" text-anchor="middle">Готово — проверить</text>
+          <rect class="demo-hint-button" x="30" y="453" width="320" height="48" rx="9"></rect>
+          <text class="demo-button-label demo-button-label--dark" x="190" y="483" text-anchor="middle">+  Показать шаг</text>
+        </g>
+        <g class="demo-observation-panel">
+          <rect class="demo-field-frame" x="380" y="78" width="590" height="452" rx="12"></rect>
+          <text class="demo-field-label" x="400" y="106">Поле наблюдения</text>
+          <text class="demo-field-label" x="950" y="106" text-anchor="end">Геркулес · 15 линий</text>
+          <rect x="390" y="120" width="570" height="400" fill="url(#demoGrid)"></rect>
+          <line class="demo-axis" x1="390" y1="320" x2="960" y2="320"></line>
+          <line class="demo-axis" x1="675" y1="120" x2="675" y2="520"></line>
+          <g class="demo-constellation">
+            <line class="demo-edge" x1="646" y1="248" x2="764" y2="287"></line><line class="demo-edge" x1="764" y1="287" x2="697" y2="379"></line><line class="demo-edge" x1="697" y1="379" x2="629" y2="353"></line><line class="demo-edge" x1="629" y1="353" x2="646" y2="248"></line>
+            <line class="demo-edge" x1="646" y1="248" x2="528" y2="169"></line><line class="demo-edge" x1="528" y1="169" x2="697" y2="103"></line>
+            <line class="demo-edge" x1="764" y1="287" x2="832" y2="248"></line><line class="demo-edge" x1="832" y1="248" x2="883" y2="221"></line><line class="demo-edge" x1="883" y1="221" x2="933" y2="300"></line>
+            <line class="demo-edge" x1="697" y1="379" x2="680" y2="471"></line><line class="demo-edge" x1="680" y1="471" x2="528" y2="497"></line>
+            <line class="demo-edge" x1="629" y1="353" x2="528" y2="392"></line><line class="demo-edge" x1="528" y1="392" x2="461" y2="313"></line><line class="demo-edge" x1="461" y1="313" x2="461" y2="274"></line><line class="demo-edge" x1="461" y1="274" x2="427" y2="261"></line>
+            <circle class="demo-star" cx="646" cy="248" r="7"></circle><circle class="demo-star" cx="764" cy="287" r="7"></circle><circle class="demo-star" cx="697" cy="379" r="7"></circle><circle class="demo-star" cx="629" cy="353" r="7"></circle><circle class="demo-star" cx="528" cy="169" r="7"></circle><circle class="demo-star" cx="697" cy="103" r="7"></circle><circle class="demo-star" cx="832" cy="248" r="7"></circle><circle class="demo-star" cx="883" cy="221" r="7"></circle><circle class="demo-star" cx="933" cy="300" r="7"></circle><circle class="demo-star" cx="680" cy="471" r="7"></circle><circle class="demo-star" cx="528" cy="497" r="7"></circle><circle class="demo-star" cx="528" cy="392" r="7"></circle><circle class="demo-star" cx="461" cy="313" r="7"></circle><circle class="demo-star" cx="461" cy="274" r="7"></circle><circle class="demo-star" cx="427" cy="261" r="7"></circle>
+          </g>
         </g>
         <g class="demo-cursor"><path d="M2 2v38l10-10 8 17 9-4-8-17h16z"></path><circle cx="4" cy="4" r="18"></circle></g>
       </svg>
