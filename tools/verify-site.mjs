@@ -1,12 +1,16 @@
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 
-const [html, app, matcher, dataSource, authorSource] = await Promise.all([
+const [html, app, matcher, dataSource, authorSource, robots, sitemap, manifest, favicon] = await Promise.all([
   readFile(new URL("../index.html", import.meta.url), "utf8"),
   readFile(new URL("../app.js", import.meta.url), "utf8"),
   readFile(new URL("../shape-matcher.js", import.meta.url), "utf8"),
   readFile(new URL("../constellations.js", import.meta.url), "utf8"),
   readFile(new URL("./author_schemes.json", import.meta.url), "utf8"),
+  readFile(new URL("../robots.txt", import.meta.url), "utf8"),
+  readFile(new URL("../sitemap.xml", import.meta.url), "utf8"),
+  readFile(new URL("../site.webmanifest", import.meta.url), "utf8"),
+  readFile(new URL("../favicon.svg", import.meta.url), "utf8"),
 ]);
 const authorSchemes = JSON.parse(authorSource);
 
@@ -69,6 +73,12 @@ if (!app.includes("branchArmed") || !app.includes("Контур замкнут")
 if (!app.includes("Выбор точки ${target + 1} снят") || !app.includes("state.active = null")) throw new Error("Repeated active-point click must release the drawing branch");
 if (!html.includes('id="roundTotal">27</span>')) throw new Error("The 27-task deck total is missing");
 if (!html.includes('id="settingsDialog"') || !html.includes('id="referenceSave"')) throw new Error("Reference editor settings are missing");
+if (!html.includes('rel="canonical" href="https://ebergovin-ui.github.io/berets-astra/"') || !html.includes('type="application/ld+json"') || !html.includes('id="searchIntroTitle"')) {
+  throw new Error("Search metadata and indexable trainer description are missing");
+}
+if (!robots.includes("Sitemap: https://ebergovin-ui.github.io/berets-astra/sitemap.xml") || !sitemap.includes("https://ebergovin-ui.github.io/berets-astra/") || !manifest.includes('"name": "АСТРА — тренажёр созвездий"') || !favicon.includes("<svg")) {
+  throw new Error("Public SEO discovery assets are incomplete");
+}
 if (!app.includes("REFERENCE_STORAGE_KEY") || !app.includes("saveReferenceEditor") || !app.includes("resetReferenceEditor")) throw new Error("Persistent custom reference workflow is missing");
 if (!app.includes("PERSONAL_STORAGE_KEY") || !app.includes("savePersonalObjects") || !html.includes('id="personalObjectForm"') || !html.includes('id="personalAddToggle"')) {
   throw new Error("Persistent personal constellation creation is missing");

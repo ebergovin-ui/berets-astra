@@ -6,17 +6,63 @@
   <meta name="theme-color" content="#0b0b0d">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'self'; require-trusted-types-for 'script'; trusted-types 'none'">
   <meta name="referrer" content="no-referrer">
-  <meta name="description" content="Тренажёр созвездий и альфа-звёзд по школьной астрономии">
+  <meta name="description" content="Бесплатный онлайн-тренажёр созвездий: рисуйте схемы звёздного неба, находите альфа-звёзды и проверяйте знания по астрономии.">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <meta name="googlebot" content="index, follow">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="АСТРА | Тренажёр созвездий">
-  <meta property="og:description" content="Стройте схемы на координатной плоскости и запоминайте альфа-звёзды.">
+  <meta property="og:locale" content="ru_RU">
+  <meta property="og:site_name" content="BERETS / АСТРА">
+  <meta property="og:title" content="Тренажёр созвездий онлайн — АСТРА">
+  <meta property="og:description" content="Рисуйте созвездия, запоминайте альфа-звёзды и сразу проверяйте сходство с эталоном.">
   <meta property="og:url" content="https://ebergovin-ui.github.io/berets-astra/">
   <meta property="og:image" content="https://ebergovin-ui.github.io/berets-astra/assets/og.png">
+  <meta property="og:image:alt" content="Интерфейс онлайн-тренажёра созвездий АСТРА">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="АСТРА | Тренажёр созвездий">
-  <meta name="twitter:description" content="Стройте схемы на координатной плоскости и запоминайте альфа-звёзды.">
+  <meta name="twitter:title" content="Тренажёр созвездий онлайн — АСТРА">
+  <meta name="twitter:description" content="Рисуйте созвездия, запоминайте альфа-звёзды и сразу проверяйте сходство с эталоном.">
   <meta name="twitter:image" content="https://ebergovin-ui.github.io/berets-astra/assets/og.png">
-  <title>BERETS / АСТРА | Тренажёр созвездий</title>
+  <link rel="canonical" href="https://ebergovin-ui.github.io/berets-astra/">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <title>Тренажёр созвездий онлайн — изучение астрономии | АСТРА</title>
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://ebergovin-ui.github.io/berets-astra/#website",
+          "url": "https://ebergovin-ui.github.io/berets-astra/",
+          "name": "BERETS / АСТРА",
+          "alternateName": "Тренажёр созвездий АСТРА",
+          "inLanguage": "ru"
+        },
+        {
+          "@type": "WebApplication",
+          "@id": "https://ebergovin-ui.github.io/berets-astra/#application",
+          "url": "https://ebergovin-ui.github.io/berets-astra/",
+          "name": "АСТРА — тренажёр созвездий",
+          "description": "Бесплатный интерактивный тренажёр для изучения схем созвездий, звёздных треугольников и альфа-звёзд.",
+          "applicationCategory": "EducationalApplication",
+          "operatingSystem": "Любая система с современным браузером",
+          "browserRequirements": "Требуется JavaScript",
+          "inLanguage": "ru",
+          "isAccessibleForFree": true,
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "RUB"
+          },
+          "audience": {
+            "@type": "EducationalAudience",
+            "educationalRole": "student"
+          },
+          "learningResourceType": "Интерактивный тренажёр",
+          "educationalUse": ["Самопроверка", "Тренировка", "Изучение созвездий"]
+        }
+      ]
+    }
+  </script>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -133,6 +179,29 @@
       <p id="drawingDescription" class="sr-only" aria-live="polite"></p>
     </section>
   </main>
+
+  <section class="search-intro" aria-labelledby="searchIntroTitle">
+    <div class="search-intro__lead">
+      <p class="task-type">Астрономия онлайн</p>
+      <h2 id="searchIntroTitle">Тренажёр созвездий и альфа-звёзд</h2>
+      <p>АСТРА помогает запоминать узнаваемые схемы созвездий через практику. Нарисуйте фигуру по памяти, сравните её с эталоном и затем найдите α-звезду. Поворот, отражение и размер рисунка не влияют на оценку — проверяется структура созвездия.</p>
+    </div>
+    <div class="search-intro__facts">
+      <article>
+        <h3>Что можно тренировать?</h3>
+        <p>Контуры 25 созвездий, звёздные треугольники и названия ключевых звёзд. Задания идут в случайном порядке.</p>
+      </article>
+      <article>
+        <h3>Как проходит проверка?</h3>
+        <p>Тренажёр показывает процент сходства с эталоном. Допустимый порог можно изменить в настройках.</p>
+      </article>
+      <article>
+        <h3>Кому подходит?</h3>
+        <p>Школьникам, участникам астрономических кружков и всем, кто хочет научиться узнавать созвездия.</p>
+      </article>
+    </div>
+    <p class="search-intro__note">Тренажёр работает бесплатно, без регистрации и прямо в браузере.</p>
+  </section>
 
   <div id="resultPanel" class="result-panel" role="dialog" aria-modal="true" aria-labelledby="resultTitle" hidden>
     <div class="result-backdrop"></div>
