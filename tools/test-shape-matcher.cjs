@@ -35,9 +35,11 @@ for (const options of [
 const reordered = { points: transformed().reverse(), edges: reference.edges.map(([a, b]) => [5 - a, 5 - b]) };
 assert.equal(evaluate(reference, reordered, 70).ok, true);
 
-const incomplete = evaluate(reference, { points: reference.points.slice(0, 5), edges: reference.edges.slice(0, 4) }, 70);
-assert.equal(incomplete.ok, false);
-assert.ok(incomplete.similarity > 0 && incomplete.similarity < 70);
+const incompleteUser = { points: reference.points.slice(0, 5), edges: reference.edges.slice(0, 5) };
+const incompleteAt70 = evaluate(reference, incompleteUser, 70);
+assert.equal(incompleteAt70.ok, true, "a structurally correct partial drawing must respect the configured threshold");
+assert.ok(incompleteAt70.similarity >= 70);
+assert.equal(evaluate(reference, incompleteUser, 85).ok, false, "the same drawing must fail above its score");
 
 const wrongEdges = { points: reference.points, edges: [[0, 1], [1, 2], [2, 3], [3, 0], [1, 4], [4, 5]] };
 assert.equal(evaluate(reference, wrongEdges, 70).ok, false);
@@ -65,6 +67,16 @@ for (const item of sandbox.window.CONSTELLATIONS.filter((entry) => entry.source 
   const result = evaluate(item, { points, edges: item.edges }, 70);
   assert.equal(result.ok, true, `${item.id} transformed figure should pass`);
   assert.equal(result.similarity, 100, `${item.id} transformed figure should score 100%`);
+
+  const order = [...item.points.keys()].map((_, index, values) => values[(index + 3) % values.length]);
+  const newIndex = new Map(order.map((oldIndex, index) => [oldIndex, index]));
+  const reorderedExact = {
+    points: order.map((index) => ({ ...item.points[index] })),
+    edges: item.edges.map(([a, b]) => [newIndex.get(a), newIndex.get(b)]),
+  };
+  const exactResult = evaluate(item, reorderedExact, 70);
+  assert.equal(exactResult.ok, true, `${item.id} exact custom-reference geometry should pass in any drawing order`);
+  assert.equal(exactResult.similarity, 100, `${item.id} exact custom-reference geometry should score 100%`);
 }
 
 console.log("Shape matcher verified: free transforms, one-segment equivalence, crossing proportions, order, incomplete and wrong topology.");

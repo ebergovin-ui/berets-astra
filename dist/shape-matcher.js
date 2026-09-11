@@ -64,6 +64,60 @@
     return results;
   }
 
+  function subgraphMappings(pattern, target, limit = 20000) {
+    if (pattern.points.length > target.points.length || pattern.edges.length > target.edges.length) return [];
+    const patternAdj = adjacency(pattern.points.length, pattern.edges);
+    const targetAdj = adjacency(target.points.length, target.edges);
+    const order = [...pattern.points.keys()].sort((a, b) => patternAdj[b].size - patternAdj[a].size);
+    const patternToTarget = Array(pattern.points.length).fill(-1);
+    const usedTargets = new Set();
+    const results = [];
+
+    function visit(position) {
+      if (results.length >= limit) return;
+      if (position === order.length) {
+        results.push([...patternToTarget]);
+        return;
+      }
+      const patternIndex = order[position];
+      for (let targetIndex = 0; targetIndex < target.points.length; targetIndex += 1) {
+        if (usedTargets.has(targetIndex) || targetAdj[targetIndex].size < patternAdj[patternIndex].size) continue;
+        let compatible = true;
+        for (let previous = 0; previous < position; previous += 1) {
+          const otherPattern = order[previous];
+          const otherTarget = patternToTarget[otherPattern];
+          if (patternAdj[patternIndex].has(otherPattern) && !targetAdj[targetIndex].has(otherTarget)) {
+            compatible = false;
+            break;
+          }
+        }
+        if (!compatible) continue;
+        patternToTarget[patternIndex] = targetIndex;
+        usedTargets.add(targetIndex);
+        visit(position + 1);
+        usedTargets.delete(targetIndex);
+        patternToTarget[patternIndex] = -1;
+      }
+    }
+
+    visit(0);
+    return results;
+  }
+
+  function partialGraphMappings(reference, user, limit = 20000) {
+    if (user.points.length <= reference.points.length && user.edges.length <= reference.edges.length) {
+      return subgraphMappings(user, reference, limit).map((userToReference) => {
+        const referenceToUser = Array(reference.points.length).fill(-1);
+        userToReference.forEach((referenceIndex, userIndex) => { referenceToUser[referenceIndex] = userIndex; });
+        return referenceToUser;
+      });
+    }
+    if (reference.points.length <= user.points.length && reference.edges.length <= user.edges.length) {
+      return subgraphMappings(reference, user, limit);
+    }
+    return [];
+  }
+
   function centered(points) {
     const center = points.reduce((sum, point) => ({ x: sum.x + point.x, y: sum.y + point.y }), { x: 0, y: 0 });
     center.x /= Math.max(points.length, 1);
@@ -111,6 +165,18 @@
     return Math.min(84, clampPercent((pointRatio * .45 + edgeRatio * .55) * 84));
   }
 
+  function mappedResidual(referencePoints, userPoints, mapping) {
+    const matchedReference = [];
+    const matchedUser = [];
+    mapping.forEach((userIndex, referenceIndex) => {
+      if (userIndex < 0) return;
+      matchedReference.push(referencePoints[referenceIndex]);
+      matchedUser.push(userPoints[userIndex]);
+    });
+    if (matchedReference.length < 2) return Infinity;
+    return procrustesResidual(matchedReference, matchedUser, matchedReference.map((_, index) => index));
+  }
+
   function segmentIntersectionFeature(points, edges) {
     if (edges.length !== 2 || edges.some(([a, b]) => !points[a] || !points[b])) return null;
     const [a, b] = edges[0].map((index) => points[index]);
@@ -129,13 +195,35 @@
 
   function evaluate(reference, user, passPercent = 70) {
     if (reference.points.length !== user.points.length || reference.edges.length !== user.edges.length) {
-      const similarity = incompleteSimilarity(reference, user);
-      return {
-        ok: false,
-        similarity,
-        mapping: null,
-        reason: `Сходство ${similarity}%. Схема пока не завершена: добавьте недостающие точки или соединения.`,
-      };
+      const completeness = incompleteSimilarity(reference, user);
+      const mappings = partialGraphMappings(reference, user);
+      if (!mappings.length) {
+        const similarity = clampPercent(completeness * .55);
+        return {
+          ok: false,
+          similarity,
+          mapping: null,
+          reason: `Сходство ${similarity}%. Часть соединений не соответствует эталону.`,
+        };
+      }
+      let best = { residual: Infinity, mapping: null, alphaMapped: false };
+      mappings.forEach((mapping) => {
+        const residual = mappedResidual(reference.points, user.points, mapping);
+        const alphaMapped = !Number.isInteger(reference.alphaIndex) || mapping[reference.alphaIndex] >= 0;
+        if (residual < best.residual - 1e-9 || (Math.abs(residual - best.residual) <= 1e-9 && alphaMapped && !best.alphaMapped)) {
+          best = { residual, mapping, alphaMapped };
+        }
+      });
+      const geometry = clampPercent(100 - best.residual * 100);
+      const similarity = clampPercent(completeness * (.65 + .35 * geometry / 100));
+      return similarity >= passPercent
+        ? { ok: true, similarity, mapping: best.mapping, partial: true }
+        : {
+            ok: false,
+            similarity,
+            mapping: best.mapping,
+            reason: `Сходство ${similarity}%. Для зачёта нужно не меньше ${passPercent}%. Добавьте детали или точнее передайте форму.`,
+          };
     }
     const mappings = graphMappings(reference, user);
     if (!mappings.length) {
@@ -175,5 +263,5 @@
         };
   }
 
-  return { evaluate, graphMappings, procrustesResidual, segmentIntersectionFeature, edgeKey };
+  return { evaluate, graphMappings, partialGraphMappings, procrustesResidual, segmentIntersectionFeature, edgeKey };
 });
