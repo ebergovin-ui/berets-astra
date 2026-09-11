@@ -66,11 +66,15 @@ if (!app.includes('theme: "dark"') || !app.includes("Первая вершина
 if (app.includes("Выбрана не «${state.item.alpha}»")) throw new Error("Wrong alpha-position feedback must not reveal the answer");
 if (!matcher.includes("reference.points.length === 2") || !matcher.includes("segmentIntersectionFeature")) throw new Error("Segment and crossing-aware scoring rules are missing");
 if (!app.includes("branchArmed") || !app.includes("Контур замкнут")) throw new Error("Automatic branch and contour interaction is missing");
+if (!app.includes("Выбор точки ${target + 1} снят") || !app.includes("state.active = null")) throw new Error("Repeated active-point click must release the drawing branch");
 if (!html.includes('id="roundTotal">27</span>')) throw new Error("The 27-task deck total is missing");
 if (!html.includes('id="settingsDialog"') || !html.includes('id="referenceSave"')) throw new Error("Reference editor settings are missing");
 if (!app.includes("REFERENCE_STORAGE_KEY") || !app.includes("saveReferenceEditor") || !app.includes("resetReferenceEditor")) throw new Error("Persistent custom reference workflow is missing");
+if (!app.includes("PERSONAL_STORAGE_KEY") || !app.includes("savePersonalObjects") || !html.includes('id="personalObjectForm"') || !html.includes('id="personalAddToggle"')) {
+  throw new Error("Persistent personal constellation creation is missing");
+}
 if (!app.includes("Активная вершина переключена") || !app.includes("editor.branchArmed") || !html.includes("Сохранить мой эталон")) {
   throw new Error("Reference editor must support branch switching and isolated personal saves");
 }
 
-console.log("Verified: CSP, safe DOM, 27 protected author references, personal overrides, adjustable grading/theme, alpha-name quiz and shape invariants.");
+console.log("Verified: CSP, safe DOM, 27 protected references, personal constellations, adjustable grading/theme, alpha-name quiz and shape invariants.");

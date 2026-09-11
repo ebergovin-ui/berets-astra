@@ -3,6 +3,7 @@
 
   const baseObjects = window.CONSTELLATIONS.map((item) => structuredClone(item));
   const REFERENCE_STORAGE_KEY = "astra-reference-overrides-v1";
+  const PERSONAL_STORAGE_KEY = "astra-personal-objects-v1";
   const PREFERENCE_STORAGE_KEY = "astra-training-preferences-v1";
   const DEFAULT_PASS_PERCENT = 70;
 
@@ -54,12 +55,30 @@
     }
   }
 
+  function validPersonalObject(value) {
+    return validReferenceOverride(value)
+      && typeof value.id === "string" && value.id.startsWith("personal-")
+      && typeof value.name === "string" && value.name.trim().length >= 2 && value.name.trim().length <= 48
+      && typeof value.alpha === "string" && value.alpha.trim().length >= 2 && value.alpha.trim().length <= 48
+      && value.kind === "constellation";
+  }
+
+  function readPersonalObjects() {
+    try {
+      const stored = JSON.parse(localStorage.getItem(PERSONAL_STORAGE_KEY) || "[]");
+      return Array.isArray(stored) ? stored.filter(validPersonalObject).map((item) => ({ ...item, personalObject: true, customReference: true })) : [];
+    } catch {
+      return [];
+    }
+  }
+
   const referenceOverrides = readReferenceOverrides();
+  const personalObjects = readPersonalObjects();
   const objects = baseObjects.map((item) => {
     const custom = referenceOverrides[item.id];
     if (!custom) return structuredClone(item);
     return { ...structuredClone(item), ...structuredClone(custom), customReference: true };
-  });
+  }).concat(personalObjects.map((item) => structuredClone(item)));
   const GRID = { minX: -16, maxX: 16, minY: -16, maxY: 16, left: 200, right: 800, top: 40, bottom: 640 };
   const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -137,6 +156,12 @@
     referenceReset: $("#referenceReset"),
     referenceSave: $("#referenceSave"),
     referenceMessage: $("#referenceMessage"),
+    personalAddToggle: $("#personalAddToggle"),
+    personalObjectForm: $("#personalObjectForm"),
+    personalName: $("#personalName"),
+    personalAlpha: $("#personalAlpha"),
+    personalCancel: $("#personalCancel"),
+    personalFormMessage: $("#personalFormMessage"),
     starNameQuiz: $("#starNameQuiz"),
     starNamePrompt: $("#starNamePrompt"),
     starNameChoices: $("#starNameChoices"),
@@ -262,6 +287,69 @@
     try { localStorage.setItem(REFERENCE_STORAGE_KEY, JSON.stringify(referenceOverrides)); } catch { /* private mode */ }
   }
 
+  function savePersonalObjects() {
+    const saved = personalObjects.map((item) => {
+      const copy = structuredClone(item);
+      delete copy.personalObject;
+      delete copy.customReference;
+      delete copy.personalDraft;
+      return copy;
+    });
+    try { localStorage.setItem(PERSONAL_STORAGE_KEY, JSON.stringify(saved)); } catch { /* private mode */ }
+  }
+
+  function discardPersonalDraft() {
+    const draftIndex = objects.findIndex((item) => item.personalDraft);
+    if (draftIndex < 0) return;
+    objects.splice(draftIndex, 1);
+    if (editor.itemIndex >= objects.length) editor.itemIndex = Math.max(0, objects.length - 1);
+    rebuildReferenceList();
+  }
+
+  function closePersonalForm() {
+    elements.personalObjectForm.hidden = true;
+    elements.personalObjectForm.reset();
+    elements.personalFormMessage.textContent = "";
+    elements.personalAddToggle.hidden = false;
+  }
+
+  function createPersonalObject(event) {
+    event.preventDefault();
+    const name = elements.personalName.value.trim().replace(/\s+/g, " ");
+    const alpha = elements.personalAlpha.value.trim().replace(/\s+/g, " ");
+    if (name.length < 2 || alpha.length < 2) {
+      elements.personalFormMessage.textContent = "Укажите название созвездия и имя его α-звезды.";
+      return;
+    }
+    if (objects.some((item) => item.name.toLocaleLowerCase("ru") === name.toLocaleLowerCase("ru") && !item.personalDraft)) {
+      elements.personalFormMessage.textContent = "Созвездие с таким названием уже есть. Выберите другое название.";
+      return;
+    }
+    discardPersonalDraft();
+    const id = `personal-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const draft = {
+      id,
+      name,
+      kind: "constellation",
+      alpha,
+      alphaDesignation: "α",
+      alphaScientific: `α ${name}`,
+      alphaIndex: null,
+      pointNames: [],
+      source: "personal-object",
+      sourceUrl: "",
+      points: [],
+      edges: [],
+      personalObject: true,
+      personalDraft: true,
+      customReference: true,
+    };
+    objects.push(draft);
+    closePersonalForm();
+    loadReferenceEditor(objects.length - 1);
+    editorMessage("Поставьте точки, соедините их, укажите α-звезду и сохраните созвездие.", "success");
+  }
+
   function editorSnapshot() {
     editor.history.push({
       points: structuredClone(editor.points),
@@ -317,14 +405,18 @@
     });
     elements.referenceCount.textContent = `${editor.points.length} точек · ${editor.edges.length} линий`;
     elements.referenceUndo.disabled = editor.history.length === 0;
-    elements.referenceAlpha.disabled = objects[editor.itemIndex]?.kind === "asterism" || editor.points.length === 0;
+    const item = objects[editor.itemIndex];
+    elements.referenceAlpha.disabled = item?.kind === "asterism" || editor.points.length === 0;
+    elements.referenceReset.disabled = Boolean(item?.personalObject);
+    elements.referenceReset.title = item?.personalObject ? "У личного созвездия нет авторской версии" : "";
+    elements.referenceSave.textContent = item?.personalObject ? "Сохранить созвездие" : "Сохранить мой эталон";
     elements.referenceAlpha.textContent = editor.alphaMode ? "Выберите α на поле" : "Указать α-звезду";
     elements.referenceHelp.classList.toggle("is-alpha", editor.alphaMode);
     elements.referenceHelp.textContent = editor.alphaMode
       ? "Нажмите точку, которая должна считаться α-звездой."
-      : objects[editor.itemIndex]?.kind === "asterism"
-        ? `Вершины: ${objects[editor.itemIndex].vertices.map((vertex) => vertex.star).join(", ")}. Нажмите готовую точку, чтобы продолжить линию из неё.`
-        : `α-звезда: ${objects[editor.itemIndex]?.alpha}. Нажмите готовую точку, чтобы продолжить линию из неё.`;
+      : item?.kind === "asterism"
+        ? `Вершины: ${item.vertices.map((vertex) => vertex.star).join(", ")}. Нажмите готовую точку, чтобы продолжить линию из неё.`
+        : `α-звезда: ${item?.alpha}. Нажмите готовую точку, чтобы продолжить линию из неё.`;
   }
 
   function rebuildReferenceList() {
@@ -337,11 +429,11 @@
       elements.referenceSelect.append(option);
       const button = document.createElement("button");
       button.type = "button";
-      button.className = `reference-object${index === editor.itemIndex ? " is-active" : ""}${referenceOverrides[item.id] ? " is-custom" : ""}`;
+      button.className = `reference-object${index === editor.itemIndex ? " is-active" : ""}${referenceOverrides[item.id] || item.personalObject ? " is-custom" : ""}`;
       const name = document.createElement("span");
       name.textContent = item.name;
       const status = document.createElement("small");
-      status.textContent = referenceOverrides[item.id] ? "Свой" : "Автор";
+      status.textContent = item.personalDraft ? "Черновик" : item.personalObject ? "Личное" : referenceOverrides[item.id] ? "Свой" : "Автор";
       button.append(name, status);
       button.addEventListener("click", () => loadReferenceEditor(index));
       elements.referenceObjects.append(button);
@@ -362,13 +454,16 @@
     editor.alphaMode = false;
     editor.history = [];
     elements.referenceTitle.textContent = item.name;
-    elements.referenceState.textContent = referenceOverrides[item.id] ? "Ваш сохранённый эталон" : "Защищённый авторский эталон";
+    elements.referenceState.textContent = item.personalDraft ? "Новое личное созвездие" : item.personalObject ? "Ваше созвездие" : referenceOverrides[item.id] ? "Ваш сохранённый эталон" : "Защищённый авторский эталон";
     editorMessage("");
     rebuildReferenceList();
     renderReferenceEditor();
   }
 
   function referencePointFromEvent(event) {
+    const star = event.target.closest?.(".reference-star");
+    const starIndex = Number(star?.dataset.index);
+    if (Number.isInteger(starIndex) && editor.points[starIndex]) return { ...editor.points[starIndex] };
     const rect = elements.referenceSvg.getBoundingClientRect();
     return fromSvg((event.clientX - rect.left) * 1000 / rect.width, (event.clientY - rect.top) * 680 / rect.height);
   }
@@ -478,12 +573,23 @@
     }
     candidate.alphaIndex = item.kind === "constellation" ? editor.alphaIndex : undefined;
     candidate.pointNames = editor.points.map((_, index) => item.kind === "constellation" && index === editor.alphaIndex ? item.alpha : `Звезда №${index + 1}`);
-    referenceOverrides[item.id] = candidate;
-    saveReferenceOverrides();
-    Object.assign(item, structuredClone(candidate), { customReference: true });
-    elements.referenceState.textContent = "Ваш сохранённый эталон";
+    if (item.personalObject) {
+      Object.assign(item, structuredClone(candidate), { personalObject: true, customReference: true, personalDraft: false });
+      const savedIndex = personalObjects.findIndex((saved) => saved.id === item.id);
+      if (savedIndex >= 0) personalObjects[savedIndex] = structuredClone(item);
+      else personalObjects.push(structuredClone(item));
+      savePersonalObjects();
+      elements.referenceState.textContent = "Ваше созвездие";
+      if (!state.deck.includes(editor.itemIndex)) state.deck.push(editor.itemIndex);
+      elements.roundTotal.textContent = objects.filter((object) => !object.personalDraft).length;
+    } else {
+      referenceOverrides[item.id] = candidate;
+      saveReferenceOverrides();
+      Object.assign(item, structuredClone(candidate), { customReference: true });
+      elements.referenceState.textContent = "Ваш сохранённый эталон";
+    }
     rebuildReferenceList();
-    editorMessage("Эталон сохранён. Следующая проверка использует эту схему.", "success");
+    editorMessage(item.personalObject ? "Созвездие сохранено в этом браузере и добавлено в тренировку." : "Эталон сохранён. Следующая проверка использует эту схему.", "success");
     if (state.item?.id === item.id) {
       state.item = item;
       clearDrawing();
@@ -493,6 +599,7 @@
 
   function resetReferenceEditor() {
     const item = objects[editor.itemIndex];
+    if (item.personalObject) return editorMessage("Это личное созвездие: для него нет авторской версии.", "error");
     const original = structuredClone(baseObjects.find((candidate) => candidate.id === item.id));
     delete referenceOverrides[item.id];
     saveReferenceOverrides();
@@ -819,7 +926,13 @@
       target = state.points.length;
       state.points.push(gridPoint);
     } else if (state.active === target) {
-      setStatus(`Точка ${target + 1} уже выбрана.`, "");
+      snapshot();
+      state.active = null;
+      state.chainStart = null;
+      state.chainEdges = 0;
+      state.branchArmed = false;
+      setStatus(`Выбор точки ${target + 1} снят. Поставьте новую точку в любом месте или выберите другую вершину.`, "");
+      renderDrawing();
       return;
     } else {
       snapshot();
@@ -1341,9 +1454,11 @@
     fitTaskTitle();
     elements.type.textContent = `Схематично · зачёт от ${preferences.passPercent}%`;
     elements.type.classList.remove("is-coordinate");
-    elements.sourceLink.hidden = false;
-    elements.sourceLink.href = state.item.sourceUrl || "https://commons.wikimedia.org/";
-    elements.sourceLink.textContent = state.item.customReference ? "Ваш личный эталон" : "Защищённый авторский эталон";
+    elements.sourceLink.hidden = Boolean(state.item.personalObject);
+    if (!state.item.personalObject) {
+      elements.sourceLink.href = state.item.sourceUrl || "https://commons.wikimedia.org/";
+      elements.sourceLink.textContent = state.item.customReference ? "Ваш личный эталон" : "Защищённый авторский эталон";
+    }
     elements.round.textContent = state.deckPosition;
     elements.phaseTwoLabel.textContent = state.item.kind === "asterism" ? "Назовите 3 α-звезды" : "Найдите и назовите α-звезду";
     elements.phases[0].className = "phase is-active";
@@ -1386,7 +1501,9 @@
 
   elements.sky.addEventListener("click", (event) => {
     if (event.button !== undefined && event.button !== 0) return;
-    addGridPoint(pointerToGrid(event));
+    const star = event.target.closest?.(".user-point");
+    const starIndex = Number(star?.dataset.index);
+    addGridPoint(Number.isInteger(starIndex) && state.points[starIndex] ? { ...state.points[starIndex] } : pointerToGrid(event));
   });
   elements.hintButton.addEventListener("click", showHint);
   elements.undoButton.addEventListener("click", undo);
@@ -1399,6 +1516,14 @@
   elements.coordinateForm.addEventListener("submit", addCoordinateFromForm);
   elements.settingsButton.addEventListener("click", openReferenceSettings);
   elements.settingsClose.addEventListener("click", () => elements.settingsDialog.close());
+  elements.personalAddToggle.addEventListener("click", () => {
+    discardPersonalDraft();
+    elements.personalAddToggle.hidden = true;
+    elements.personalObjectForm.hidden = false;
+    elements.personalName.focus();
+  });
+  elements.personalObjectForm.addEventListener("submit", createPersonalObject);
+  elements.personalCancel.addEventListener("click", closePersonalForm);
   elements.referenceSelect.addEventListener("change", (event) => loadReferenceEditor(event.target.value));
   elements.referenceSky.addEventListener("click", (event) => {
     if (event.button !== undefined && event.button !== 0) return;
@@ -1432,6 +1557,10 @@
   systemTheme.addEventListener?.("change", () => { if (preferences.theme === "system") applyTheme(); });
   elements.settingsDialog.addEventListener("click", (event) => {
     if (event.target === elements.settingsDialog) elements.settingsDialog.close();
+  });
+  elements.settingsDialog.addEventListener("close", () => {
+    discardPersonalDraft();
+    closePersonalForm();
   });
   elements.guideButton.addEventListener("click", () => { elements.guideDialog.showModal(); startGuideDemo(); });
   elements.guideClose.addEventListener("click", () => elements.guideDialog.close());

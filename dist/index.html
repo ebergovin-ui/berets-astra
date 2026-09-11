@@ -231,6 +231,18 @@
     </section>
     <div class="reference-editor">
       <aside class="reference-list" aria-label="Список учебных объектов">
+        <button id="personalAddToggle" class="button button-quiet personal-add-toggle" type="button">Добавить своё созвездие</button>
+        <form id="personalObjectForm" class="personal-object-form" hidden novalidate>
+          <label for="personalName">Название созвездия</label>
+          <input id="personalName" name="personalName" type="text" minlength="2" maxlength="48" autocomplete="off" required>
+          <label for="personalAlpha">Название α-звезды</label>
+          <input id="personalAlpha" name="personalAlpha" type="text" minlength="2" maxlength="48" autocomplete="off" required>
+          <div>
+            <button class="button button-primary" type="submit">Перейти к рисунку</button>
+            <button id="personalCancel" class="button button-quiet" type="button">Отмена</button>
+          </div>
+          <p id="personalFormMessage" role="status" aria-live="polite"></p>
+        </form>
         <label for="referenceSelect">Созвездие или треугольник</label>
         <select id="referenceSelect"></select>
         <div id="referenceObjects" class="reference-objects"></div>
