@@ -5,7 +5,7 @@
   const REFERENCE_STORAGE_KEY = "astra-reference-overrides-v1";
   const PERSONAL_STORAGE_KEY = "astra-personal-objects-v1";
   const PREFERENCE_STORAGE_KEY = "astra-training-preferences-v1";
-  const GUIDE_INVITE_STORAGE_KEY = "astra-guide-invite-seen-v1";
+  const GUIDE_INVITE_STORAGE_KEY = "astra-guide-invite-seen-v2";
   const MASTERY_VERSION = 2;
   const MASTERY_TARGET = 5;
   const DEFAULT_PASS_PERCENT = 70;
@@ -2105,7 +2105,6 @@
   elements.welcomeGuideDialog.addEventListener("click", (event) => {
     if (event.target === elements.welcomeGuideDialog) elements.welcomeGuideDialog.close();
   });
-  elements.welcomeGuideDialog.addEventListener("close", rememberGuideInvite);
   elements.guideClose.addEventListener("click", () => elements.guideDialog.close());
   elements.guideStart.addEventListener("click", () => { elements.guideDialog.close(); elements.sky.focus(); });
   elements.crossDemoReplay.addEventListener("click", startCrossGuideDemo);
