@@ -1294,7 +1294,11 @@
   }
 
   function beginNameQuiz(correctName, prompt, onCorrect) {
-    const distractors = shuffle(alphaNamePool().filter((name) => name !== correctName)).slice(0, 4);
+    const excludedNames = new Set([correctName]);
+    if (state.item.kind === "asterism") {
+      state.item.vertices.forEach((vertex) => excludedNames.add(vertex.star));
+    }
+    const distractors = shuffle(alphaNamePool().filter((name) => !excludedNames.has(name))).slice(0, 4);
     const choices = shuffle([correctName, ...distractors]);
     elements.starNamePrompt.textContent = prompt;
     elements.starNameChoices.replaceChildren();

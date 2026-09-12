@@ -55,6 +55,15 @@ for (const object of objects) {
   if (object.points.length !== author.points.length || object.edges.length !== author.edges.length) throw new Error(`${object.id}: generated data differs from author reference`);
 }
 if (!objects.find((item) => item.id === "CVn")?.alphaAnyPoint) throw new Error("Canes Venatici must accept either endpoint as the alpha-star position");
+if (!objects.find((item) => item.id === "CMi")?.alphaAnyPoint) throw new Error("Canis Minor must accept either endpoint as the alpha-star position");
+const alphaPool = [...new Set(objects.flatMap((item) => item.kind === "asterism" ? item.vertices.map((vertex) => vertex.star) : [item.alpha]).filter(Boolean))];
+for (const asterism of objects.filter((item) => item.kind === "asterism")) {
+  const ownStars = new Set(asterism.vertices.map((vertex) => vertex.star));
+  for (const vertex of asterism.vertices) {
+    const distractorPool = alphaPool.filter((name) => name !== vertex.star && !ownStars.has(name));
+    if (distractorPool.length < 4 || distractorPool.some((name) => ownStars.has(name))) throw new Error(`${asterism.id}: invalid answer distractor pool`);
+  }
+}
 if (!app.includes("minY: -16, maxY: 16")) throw new Error("Both grid axes must span -16..16");
 if (!app.includes("left: 200, right: 800, top: 40, bottom: 640")) throw new Error("Grid plotting area must be square");
 if (html.includes('id="grid"') || html.includes('url(#grid)')) throw new Error("Duplicate decorative grid must not exist");
@@ -66,6 +75,7 @@ if (!app.includes("resetGuideDemo") || !app.includes("Нажмите готов�
 if ((html.match(/class="demo-star"/g) || []).length !== 15 || (html.match(/class="demo-edge"/g) || []).length !== 15) throw new Error("Guide must show the full 15-point Hercules schematic");
 if (!app.includes("DEFAULT_PASS_PERCENT = 70") || !app.includes("preferences.passPercent") || app.includes("evaluateCoordinateShape")) throw new Error("Adjustable 70% transform-invariant grading must remain");
 if (!html.includes('id="thresholdRange"') || !html.includes('name="theme"') || !html.includes('id="starNameChoices"')) throw new Error("Training threshold, theme and alpha-name quiz controls are missing");
+if (!app.includes('state.item.vertices.forEach((vertex) => excludedNames.add(vertex.star))') || !app.includes('!excludedNames.has(name)')) throw new Error("Asterism answer choices must exclude the other stars of the current triangle");
 if (!html.includes('id="practiceModeButton"') || !html.includes('id="gradedModeButton"') || !html.includes('Контрольная на оценку') || !html.includes('id="testIntroDialog"') || !html.includes('id="testHud"')) throw new Error("Testing mode interface is missing");
 if (html.includes('id="testButton"') || !app.includes('setModeSelection("graded")') || !app.includes('setModeSelection("practice")')) throw new Error("Testing mode must use the dedicated top-level mode switcher");
 if (!app.includes("TEST_TASK_COUNT = 10") || !app.includes("TEST_DURATION_MS = 10 * 60 * 1000") || !app.includes("TEST_PASS_PERCENT = 70")) throw new Error("Testing mode rules are incorrect");
