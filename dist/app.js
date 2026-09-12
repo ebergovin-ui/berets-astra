@@ -6,6 +6,9 @@
   const PERSONAL_STORAGE_KEY = "astra-personal-objects-v1";
   const PREFERENCE_STORAGE_KEY = "astra-training-preferences-v1";
   const DEFAULT_PASS_PERCENT = 70;
+  const TEST_TASK_COUNT = 10;
+  const TEST_DURATION_MS = 10 * 60 * 1000;
+  const TEST_PASS_PERCENT = 70;
 
   function readPreferences() {
     try {
@@ -137,6 +140,14 @@
     guideClose: $("#guideClose"),
     guideStart: $("#guideStart"),
     settingsButton: $("#settingsButton"),
+    testButton: $("#testButton"),
+    testHud: $("#testHud"),
+    testTimer: $("#testTimer"),
+    testScore: $("#testScore"),
+    testIntroDialog: $("#testIntroDialog"),
+    testIntroClose: $("#testIntroClose"),
+    testStartButton: $("#testStartButton"),
+    testCancelButton: $("#testCancelButton"),
     settingsDialog: $("#settingsDialog"),
     settingsClose: $("#settingsClose"),
     referenceSelect: $("#referenceSelect"),
@@ -213,6 +224,18 @@
     shapeMapping: null,
     pendingUserIndex: null,
     namedVertices: new Set(),
+    test: {
+      active: false,
+      summary: false,
+      deck: [],
+      position: 0,
+      score: 0,
+      results: [],
+      endsAt: 0,
+      interval: null,
+      transitionTimer: null,
+      roundResolved: false,
+    },
   };
 
   const GUIDE_POINTS = [[646, 248], [764, 287], [697, 379], [629, 353], [528, 169], [697, 103], [832, 248], [883, 221], [933, 300], [680, 471], [528, 497], [528, 392], [461, 313], [461, 274], [427, 261]];
@@ -1174,12 +1197,13 @@
     return window.ASTRA_SHAPE_MATCHER.evaluate(
       state.item,
       { points: state.points, edges: state.edges },
-      preferences.passPercent,
+      state.test.active ? TEST_PASS_PERCENT : preferences.passPercent,
     );
   }
 
   function maybeAutoCheck() {
     clearTimeout(state.autoCheckTimer);
+    if (state.test.active) return;
     if (state.phase !== "draw" || state.points.length !== state.item.points.length || state.edges.length !== state.item.edges.length) return;
     state.autoCheckTimer = setTimeout(checkShape, 380);
   }
@@ -1190,6 +1214,10 @@
     state.shapeMapping = result.mapping || null;
     if (!result.ok) {
       state.failedChecks += 1;
+      if (state.test.active) {
+        resolveTestRound(false, `Сходство ${result.similarity}%. Для балла нужно не менее ${TEST_PASS_PERCENT}%.`);
+        return;
+      }
       setStatus(`${result.reason} Продолжите рисунок, отмените последний шаг или очистите поле.`, "error");
       showToast(`Сходство ${result.similarity}%`, result.reason, "error", 4200);
       return;
@@ -1277,6 +1305,11 @@
           state.failedChecks += 1;
           button.classList.add("is-wrong");
           button.disabled = true;
+          if (state.test.active) {
+            elements.starNameChoices.querySelectorAll("button").forEach((choice) => { choice.disabled = true; });
+            resolveTestRound(false, "Название α-звезды выбрано неверно.");
+            return;
+          }
           setStatus(`«${name}» — неверно. Выберите другое название.`, "error");
           return;
         }
@@ -1320,6 +1353,11 @@
       state.failedChecks += 1;
       state.wrongIndices.add(selected);
       elements.starNameQuiz.hidden = true;
+      if (state.test.active) {
+        renderDrawing();
+        resolveTestRound(false, "Выбрана не α-звезда.");
+        return;
+      }
       setStatus("Выбрана не α-звезда. Попробуйте другую точку.", "error");
       renderDrawing();
       showToast("Не та звезда", "Это не α-звезда. Выберите другую точку.", "error", 4000);
@@ -1353,7 +1391,154 @@
     elements.answerFact.append(row);
   }
 
+  function formatTestTime(milliseconds) {
+    const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${String(seconds).padStart(2, "0")}`;
+  }
+
+  function updateTestHud() {
+    if (!state.test.active) return;
+    const remaining = state.test.endsAt - Date.now();
+    elements.testTimer.textContent = formatTestTime(remaining);
+    elements.testScore.textContent = state.test.score;
+    elements.testHud.classList.toggle("is-urgent", remaining <= 60_000);
+    if (remaining <= 0) finishTest(true);
+  }
+
+  function startTest() {
+    const candidates = objects
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => item.kind === "constellation" && !item.personalObject)
+      .map(({ index }) => index);
+    state.test.active = true;
+    state.test.summary = false;
+    state.test.deck = shuffle(candidates).slice(0, TEST_TASK_COUNT);
+    state.test.position = 0;
+    state.test.score = 0;
+    state.test.results = [];
+    state.test.endsAt = Date.now() + TEST_DURATION_MS;
+    state.test.roundResolved = false;
+    clearInterval(state.test.interval);
+    clearTimeout(state.test.transitionTimer);
+    elements.testIntroDialog.close();
+    elements.testHud.hidden = false;
+    elements.testButton.textContent = "Завершить тест";
+    elements.settingsButton.disabled = true;
+    elements.guideButton.disabled = true;
+    elements.testScore.textContent = "0";
+    document.body.classList.add("test-active");
+    updateTestHud();
+    state.test.interval = setInterval(updateTestHud, 250);
+    loadNext();
+  }
+
+  function resolveTestRound(passed, reason) {
+    if (!state.test.active || state.test.roundResolved) return;
+    state.test.roundResolved = true;
+    state.phase = "test-transition";
+    elements.starNameQuiz.hidden = true;
+    elements.doneButton.disabled = true;
+    elements.undoButton.disabled = true;
+    elements.clearButton.disabled = true;
+    elements.skipButton.disabled = true;
+    elements.addCoordinateButton.disabled = true;
+    if (passed) state.test.score += 1;
+    state.test.results.push({
+      name: state.item.name,
+      passed,
+      similarity: Number.isFinite(state.lastSimilarity) ? state.lastSimilarity : null,
+      reason,
+    });
+    elements.testScore.textContent = state.test.score;
+    setStatus(passed ? `+1 балл. ${reason}` : `0 баллов. ${reason}`, passed ? "success" : "error");
+    showToast(passed ? "+1 балл" : "0 баллов", reason, passed ? "success" : "error", 1100);
+    state.test.transitionTimer = setTimeout(loadNext, 1150);
+  }
+
+  function finishTest(timedOut) {
+    if (!state.test.active) return;
+    clearInterval(state.test.interval);
+    clearTimeout(state.test.transitionTimer);
+    clearTimeout(state.toastTimer);
+    elements.feedbackToast.hidden = true;
+    elements.feedbackToast.classList.remove("is-visible");
+    state.test.active = false;
+    state.test.summary = true;
+    elements.testHud.hidden = true;
+    elements.testHud.classList.remove("is-urgent");
+    elements.testButton.textContent = "Тестирование";
+    elements.settingsButton.disabled = false;
+    elements.guideButton.disabled = false;
+    document.body.classList.remove("test-active");
+    elements.resultLabel.textContent = timedOut ? "Время вышло" : "Тест завершён";
+    elements.resultTitle.textContent = `${state.test.score} из ${TEST_TASK_COUNT}`;
+    const completed = state.test.results.length;
+    const verdict = state.test.score >= 8
+      ? "Отличный результат — схемы и ключевые звёзды запомнены уверенно."
+      : state.test.score >= 6
+        ? "Хорошая база. Повторите задания без балла и попробуйте ещё раз."
+        : "Стоит пройти обычную тренировку и затем повторить тест.";
+    elements.resultText.textContent = `${verdict} Выполнено заданий: ${completed} из ${TEST_TASK_COUNT}.`;
+    elements.answerFact.replaceChildren();
+    const list = document.createElement("ol");
+    list.className = "test-result-list";
+    state.test.results.forEach((result) => {
+      const row = document.createElement("li");
+      row.className = result.passed ? "is-passed" : "is-failed";
+      const name = document.createElement("span");
+      const mark = document.createElement("b");
+      name.textContent = result.name;
+      mark.textContent = result.passed ? "+1" : "0";
+      row.append(name, mark);
+      list.append(row);
+    });
+    for (let index = completed; index < TEST_TASK_COUNT; index += 1) {
+      const row = document.createElement("li");
+      row.className = "is-pending";
+      const name = document.createElement("span");
+      const mark = document.createElement("b");
+      name.textContent = "Не выполнено";
+      mark.textContent = "0";
+      row.append(name, mark);
+      list.append(row);
+    }
+    elements.answerFact.append(list);
+    elements.resultTimer.hidden = true;
+    elements.nextButton.firstChild.textContent = "Вернуться к тренировке ";
+    elements.resultPanel.classList.remove("is-counting");
+    elements.resultPanel.classList.add("is-test-summary");
+    document.querySelector(".topbar").inert = true;
+    elements.workspace.inert = true;
+    document.body.classList.add("modal-open");
+    elements.resultPanel.hidden = false;
+    elements.nextButton.focus();
+  }
+
+  function closeTestSummary() {
+    state.test.summary = false;
+    elements.resultPanel.hidden = true;
+    elements.resultPanel.classList.remove("is-test-summary", "is-counting");
+    elements.resultTimer.hidden = false;
+    elements.resultTimer.textContent = "5";
+    elements.nextButton.firstChild.textContent = "Следующее задание ";
+    elements.hintButton.hidden = false;
+    elements.answerButton.hidden = false;
+    elements.skipButton.disabled = false;
+    elements.addCoordinateButton.disabled = false;
+    document.querySelector(".topbar").inert = false;
+    elements.workspace.inert = false;
+    document.body.classList.remove("modal-open");
+    elements.roundTotal.textContent = objects.length;
+    loadNext();
+  }
+
   function finishRound() {
+    if (state.test.active) {
+      resolveTestRound(true, `Сходство ${state.lastSimilarity}%. α-звезда выбрана и названа верно.`);
+      return;
+    }
     elements.starNameQuiz.hidden = true;
     clearTimeout(state.toastTimer);
     elements.feedbackToast.classList.remove("is-visible");
@@ -1387,6 +1572,7 @@
   }
 
   function revealAnswer() {
+    if (state.test.active) return;
     state.fullAnswer = true;
     showReferenceEdges(state.item.edges.length);
     elements.hints.replaceChildren();
@@ -1419,12 +1605,22 @@
     clearTimeout(state.resultTimeout);
     clearInterval(state.resultInterval);
     clearTimeout(state.toastTimer);
-    if (state.deckPosition >= state.deck.length) {
-      state.deck = shuffle([...objects.keys()]);
-      state.deckPosition = 0;
+    if (state.test.active) {
+      clearTimeout(state.test.transitionTimer);
+      if (state.test.position >= state.test.deck.length) {
+        finishTest(false);
+        return;
+      }
+      state.item = objects[state.test.deck[state.test.position]];
+      state.test.position += 1;
+    } else {
+      if (state.deckPosition >= state.deck.length) {
+        state.deck = shuffle([...objects.keys()]);
+        state.deckPosition = 0;
+      }
+      state.item = objects[state.deck[state.deckPosition]];
+      state.deckPosition += 1;
     }
-    state.item = objects[state.deck[state.deckPosition]];
-    state.deckPosition += 1;
     state.phase = "draw";
     state.points = [];
     state.edges = [];
@@ -1446,33 +1642,43 @@
     state.shapeMapping = null;
     state.pendingUserIndex = null;
     state.namedVertices = new Set();
+    state.test.roundResolved = false;
     elements.starNameQuiz.hidden = true;
     elements.starNameChoices.replaceChildren();
     elements.title.textContent = state.item.name;
     elements.title.classList.toggle("is-medium", state.item.name.length > 8 && state.item.name.length <= 14);
     elements.title.classList.toggle("is-long", state.item.name.length > 14);
     fitTaskTitle();
-    elements.type.textContent = `Схематично · зачёт от ${preferences.passPercent}%`;
+    elements.type.textContent = state.test.active
+      ? `Тестирование · ${state.test.position} из ${TEST_TASK_COUNT} · зачёт от ${TEST_PASS_PERCENT}%`
+      : `Схематично · зачёт от ${preferences.passPercent}%`;
     elements.type.classList.remove("is-coordinate");
     elements.sourceLink.hidden = Boolean(state.item.personalObject);
     if (!state.item.personalObject) {
       elements.sourceLink.href = state.item.sourceUrl || "https://commons.wikimedia.org/";
       elements.sourceLink.textContent = state.item.customReference ? "Ваш личный эталон" : "Защищённый авторский эталон";
     }
-    elements.round.textContent = state.deckPosition;
+    elements.round.textContent = state.test.active ? state.test.position : state.deckPosition;
+    elements.roundTotal.textContent = state.test.active ? TEST_TASK_COUNT : objects.length;
     elements.phaseTwoLabel.textContent = state.item.kind === "asterism" ? "Назовите 3 α-звезды" : "Найдите и назовите α-звезду";
     elements.phases[0].className = "phase is-active";
     elements.phases[1].className = "phase";
-    elements.instruction.textContent = `Передайте форму созвездия. Поворот, отражение и масштаб свободны — зачёт от ${preferences.passPercent}%.`;
-    elements.hintButton.disabled = false;
+    elements.instruction.textContent = state.test.active
+      ? `Одна попытка. Нарисуйте созвездие и нажмите «Готово» — для балла нужно не менее ${TEST_PASS_PERCENT}% сходства.`
+      : `Передайте форму созвездия. Поворот, отражение и масштаб свободны — зачёт от ${preferences.passPercent}%.`;
+    elements.hintButton.hidden = state.test.active;
+    elements.answerButton.hidden = state.test.active;
+    elements.hintButton.disabled = state.test.active;
     elements.hintButton.replaceChildren();
     const hintPlus = document.createElement("span");
     hintPlus.setAttribute("aria-hidden", "true");
     hintPlus.textContent = "+";
     elements.hintButton.append(hintPlus, document.createTextNode(" Показать шаг"));
-    elements.answerButton.disabled = false;
+    elements.answerButton.disabled = state.test.active;
     elements.answerButton.textContent = "Показать ответ";
     elements.doneButton.disabled = false;
+    elements.skipButton.disabled = false;
+    elements.skipButton.textContent = state.test.active ? "Пропустить — 0 баллов" : "Пропустить";
     const wasModalOpen = !elements.resultPanel.hidden;
     elements.resultPanel.hidden = true;
     elements.resultPanel.classList.remove("is-counting");
@@ -1484,7 +1690,9 @@
     document.body.classList.remove("modal-open");
     elements.answer.replaceChildren();
     elements.hints.replaceChildren();
-    setStatus("Поставьте первую точку. Нажмите готовую вершину, чтобы продолжить новую ветвь из неё.", "");
+    setStatus(state.test.active
+      ? "Таймер уже идёт. Поставьте первую точку."
+      : "Поставьте первую точку. Нажмите готовую вершину, чтобы продолжить новую ветвь из неё.", "");
     drawGrid();
     renderDrawing();
     if (wasModalOpen) elements.sky.focus();
@@ -1510,11 +1718,31 @@
   elements.clearButton.addEventListener("click", clearDrawing);
   elements.doneButton.addEventListener("click", checkShape);
   elements.answerButton.addEventListener("click", revealAnswer);
-  elements.skipButton.addEventListener("click", loadNext);
-  elements.nextButton.addEventListener("click", loadNext);
+  elements.skipButton.addEventListener("click", () => {
+    if (state.test.active) resolveTestRound(false, "Задание пропущено.");
+    else loadNext();
+  });
+  elements.nextButton.addEventListener("click", () => {
+    if (state.test.summary) closeTestSummary();
+    else loadNext();
+  });
   elements.expandButton.addEventListener("click", toggleExpandedSky);
   elements.coordinateForm.addEventListener("submit", addCoordinateFromForm);
   elements.settingsButton.addEventListener("click", openReferenceSettings);
+  elements.testButton.addEventListener("click", () => {
+    if (!state.test.active) {
+      elements.testIntroDialog.showModal();
+      elements.testStartButton.focus();
+      return;
+    }
+    if (window.confirm("Завершить тест досрочно и показать текущий результат?")) finishTest(false);
+  });
+  elements.testStartButton.addEventListener("click", startTest);
+  elements.testIntroClose.addEventListener("click", () => elements.testIntroDialog.close());
+  elements.testCancelButton.addEventListener("click", () => elements.testIntroDialog.close());
+  elements.testIntroDialog.addEventListener("click", (event) => {
+    if (event.target === elements.testIntroDialog) elements.testIntroDialog.close();
+  });
   elements.settingsClose.addEventListener("click", () => elements.settingsDialog.close());
   elements.personalAddToggle.addEventListener("click", () => {
     discardPersonalDraft();

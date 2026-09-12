@@ -81,6 +81,11 @@
       </span>
     </a>
     <div class="top-stats" aria-label="Статистика тренировки">
+      <div id="testHud" class="test-hud" hidden aria-live="polite">
+        <span><b id="testTimer">10:00</b> осталось</span>
+        <span><b id="testScore">0</b> / 10 баллов</span>
+      </div>
+      <button id="testButton" class="guide-button test-button" type="button">Тестирование</button>
       <button id="settingsButton" class="guide-button" type="button">Настройки</button>
       <button id="guideButton" class="guide-button" type="button">Руководство</button>
       <span><b id="streakValue">0</b> серия</span>
@@ -202,6 +207,22 @@
     </div>
     <p class="search-intro__note">Тренажёр работает бесплатно, без регистрации и прямо в браузере.</p>
   </section>
+
+  <dialog id="testIntroDialog" class="test-intro-dialog" aria-labelledby="testIntroTitle">
+    <button id="testIntroClose" class="dialog-close" type="button" aria-label="Закрыть описание тестирования">×</button>
+    <p class="task-type">Режим проверки знаний</p>
+    <h2 id="testIntroTitle">10 созвездий.<br>10 минут.</h2>
+    <p>За каждое задание можно получить один балл. Для этого нужно с первой попытки набрать не менее 70% сходства, выбрать α-звезду и правильно назвать её.</p>
+    <dl class="test-rules">
+      <div><dt>10:00</dt><dd>общее время на весь тест</dd></div>
+      <div><dt>70%</dt><dd>минимальное сходство формы</dd></div>
+      <div><dt>1</dt><dd>попытка на каждое задание</dd></div>
+    </dl>
+    <div class="test-intro-actions">
+      <button id="testStartButton" class="button button-primary" type="button">Начать тест</button>
+      <button id="testCancelButton" class="button button-quiet" type="button">Отмена</button>
+    </div>
+  </dialog>
 
   <div id="resultPanel" class="result-panel" role="dialog" aria-modal="true" aria-labelledby="resultTitle" hidden>
     <div class="result-backdrop"></div>

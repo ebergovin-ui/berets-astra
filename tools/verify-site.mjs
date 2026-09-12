@@ -66,6 +66,9 @@ if (!app.includes("resetGuideDemo") || !app.includes("Нажмите готов�
 if ((html.match(/class="demo-star"/g) || []).length !== 15 || (html.match(/class="demo-edge"/g) || []).length !== 15) throw new Error("Guide must show the full 15-point Hercules schematic");
 if (!app.includes("DEFAULT_PASS_PERCENT = 70") || !app.includes("preferences.passPercent") || app.includes("evaluateCoordinateShape")) throw new Error("Adjustable 70% transform-invariant grading must remain");
 if (!html.includes('id="thresholdRange"') || !html.includes('name="theme"') || !html.includes('id="starNameChoices"')) throw new Error("Training threshold, theme and alpha-name quiz controls are missing");
+if (!html.includes('id="testButton"') || !html.includes('id="testIntroDialog"') || !html.includes('id="testHud"')) throw new Error("Testing mode interface is missing");
+if (!app.includes("TEST_TASK_COUNT = 10") || !app.includes("TEST_DURATION_MS = 10 * 60 * 1000") || !app.includes("TEST_PASS_PERCENT = 70")) throw new Error("Testing mode rules are incorrect");
+if (!app.includes("resolveTestRound(false") || !app.includes("resolveTestRound(true") || !app.includes("finishTest(true)")) throw new Error("Testing mode scoring or timeout handling is missing");
 if (!app.includes('theme: "dark"') || !app.includes("Первая вершина выбрана автоматически") || !app.includes("state.pendingUserIndex === index")) throw new Error("Dark default and automatic pink naming focus are missing");
 if (app.includes("Выбрана не «${state.item.alpha}»")) throw new Error("Wrong alpha-position feedback must not reveal the answer");
 if (!matcher.includes("reference.points.length === 2") || !matcher.includes("segmentIntersectionFeature")) throw new Error("Segment and crossing-aware scoring rules are missing");
@@ -87,4 +90,4 @@ if (!app.includes("Активная вершина переключена") || !
   throw new Error("Reference editor must support branch switching and isolated personal saves");
 }
 
-console.log("Verified: CSP, safe DOM, 27 protected references, personal constellations, adjustable grading/theme, alpha-name quiz and shape invariants.");
+console.log("Verified: CSP, safe DOM, 27 protected references, personal constellations, testing mode, adjustable grading/theme, alpha-name quiz and shape invariants.");
