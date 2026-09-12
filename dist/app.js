@@ -11,6 +11,7 @@
   const TEST_TASK_COUNT = 10;
   const TEST_DURATION_MS = 10 * 60 * 1000;
   const TEST_PASS_PERCENT = 70;
+  const TEST_MAX_HIDDEN_MS = 5000;
 
   function readPreferences() {
     try {
@@ -247,6 +248,10 @@
       roundResolved: false,
       visibilityExits: 0,
       integrityNotice: null,
+      hiddenAt: 0,
+      hiddenTimer: null,
+      disqualified: false,
+      disqualificationReason: "",
     },
   };
 
@@ -1458,35 +1463,51 @@
   }
 
   function syncSkyViewport() {
-    elements.svg.setAttribute("viewBox", portraitPhone.matches ? "160 0 680 680" : "0 0 1000 680");
+    elements.svg.setAttribute("viewBox", portraitPhone.matches ? "190 30 620 620" : "0 0 1000 680");
   }
 
   function showIntegrityNotice() {
     if (!state.test.active || !state.test.integrityNotice) return;
-    const failed = state.test.integrityNotice === "failed";
-    elements.testIntegrityTitle.textContent = failed ? "Задание не засчитано" : "Не покидайте страницу";
-    elements.testIntegrityText.textContent = failed
-      ? "Повторный выход со страницы расценён как попытка воспользоваться подсказкой. Текущее задание получает 0 баллов."
-      : "Это первое предупреждение. При следующем переходе в другую вкладку или приложение текущее задание получит 0 баллов.";
-    elements.testIntegrityConfirm.textContent = failed ? "Следующее задание" : "Продолжить контрольную";
+    elements.testIntegrityTitle.textContent = "Не покидайте страницу";
+    elements.testIntegrityText.textContent = "Это единственное предупреждение. Повторный выход аннулирует всю контрольную. Выход дольше чем на 5 секунд аннулирует её сразу.";
+    elements.testIntegrityConfirm.textContent = "Продолжить контрольную";
     if (!elements.testIntegrityDialog.open) elements.testIntegrityDialog.showModal();
     elements.testIntegrityConfirm.focus();
+  }
+
+  function disqualifyTest(reason) {
+    if (!state.test.active || state.test.disqualified) return;
+    state.test.disqualified = true;
+    state.test.disqualificationReason = reason;
+    state.test.integrityNotice = null;
+    finishTest(false);
   }
 
   function handleTestVisibility() {
     if (!state.test.active) return;
     if (!document.hidden) {
+      clearTimeout(state.test.hiddenTimer);
+      state.test.hiddenTimer = null;
+      if (state.test.disqualified) return;
+      const hiddenDuration = state.test.hiddenAt ? Date.now() - state.test.hiddenAt : 0;
+      state.test.hiddenAt = 0;
+      if (hiddenDuration > TEST_MAX_HIDDEN_MS) {
+        disqualifyTest("Страница была скрыта дольше 5 секунд.");
+        return;
+      }
       showIntegrityNotice();
       return;
     }
     state.test.visibilityExits += 1;
+    state.test.hiddenAt = Date.now();
     if (state.test.visibilityExits === 1) {
       state.test.integrityNotice = "warning";
+      state.test.hiddenTimer = setTimeout(() => {
+        if (document.hidden && state.test.active) disqualifyTest("Страница была скрыта дольше 5 секунд.");
+      }, TEST_MAX_HIDDEN_MS);
       return;
     }
-    if (state.test.roundResolved) return;
-    state.test.integrityNotice = "failed";
-    resolveTestRound(false, "Повторный выход со страницы во время контрольной.", false);
+    disqualifyTest("Зафиксирован повторный выход со страницы во время контрольной.");
   }
 
   function startTest() {
@@ -1504,6 +1525,11 @@
     state.test.roundResolved = false;
     state.test.visibilityExits = 0;
     state.test.integrityNotice = null;
+    state.test.hiddenAt = 0;
+    state.test.disqualified = false;
+    state.test.disqualificationReason = "";
+    clearTimeout(state.test.hiddenTimer);
+    state.test.hiddenTimer = null;
     clearInterval(state.test.interval);
     clearTimeout(state.test.transitionTimer);
     elements.testIntroDialog.close();
@@ -1545,6 +1571,8 @@
     if (!state.test.active) return;
     clearInterval(state.test.interval);
     clearTimeout(state.test.transitionTimer);
+    clearTimeout(state.test.hiddenTimer);
+    state.test.hiddenTimer = null;
     clearTimeout(state.toastTimer);
     elements.feedbackToast.hidden = true;
     elements.feedbackToast.classList.remove("is-visible");
@@ -1557,15 +1585,18 @@
     elements.settingsButton.disabled = false;
     elements.guideButton.disabled = false;
     document.body.classList.remove("test-active");
-    elements.resultLabel.textContent = timedOut ? "Время вышло" : "Тест завершён";
-    elements.resultTitle.textContent = `${state.test.score} из ${TEST_TASK_COUNT}`;
+    const disqualified = state.test.disqualified;
+    elements.resultLabel.textContent = disqualified ? "Нарушение правил" : timedOut ? "Время вышло" : "Тест завершён";
+    elements.resultTitle.textContent = disqualified ? "Попытка не засчитана" : `${state.test.score} из ${TEST_TASK_COUNT}`;
     const completed = state.test.results.length;
     const verdict = state.test.score >= 8
       ? "Отличный результат — схемы и ключевые звёзды запомнены уверенно."
       : state.test.score >= 6
         ? "Хорошая база. Повторите задания без балла и попробуйте ещё раз."
         : "Стоит пройти обычную тренировку и затем повторить тест.";
-    elements.resultText.textContent = `${verdict} Выполнено заданий: ${completed} из ${TEST_TASK_COUNT}.`;
+    elements.resultText.textContent = disqualified
+      ? `${state.test.disqualificationReason} Итоговый балл за эту попытку не выставляется.`
+      : `${verdict} Выполнено заданий: ${completed} из ${TEST_TASK_COUNT}.`;
     elements.answerFact.replaceChildren();
     const list = document.createElement("ol");
     list.className = "test-result-list";
@@ -1881,10 +1912,8 @@
     if (event.target === elements.testIntroDialog) elements.testIntroDialog.close();
   });
   elements.testIntegrityConfirm.addEventListener("click", () => {
-    const failed = state.test.integrityNotice === "failed";
     state.test.integrityNotice = null;
     elements.testIntegrityDialog.close();
-    if (failed && state.test.active && state.test.roundResolved) loadNext();
   });
   elements.testIntegrityDialog.addEventListener("cancel", (event) => event.preventDefault());
   elements.settingsClose.addEventListener("click", () => elements.settingsDialog.close());
