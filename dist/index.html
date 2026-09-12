@@ -259,6 +259,30 @@
     <div><b id="feedbackTitle"></b><span id="feedbackText"></span></div>
   </div>
 
+  <dialog id="welcomeGuideDialog" class="welcome-guide-dialog" aria-labelledby="welcomeGuideTitle">
+    <div class="welcome-guide__visual" aria-hidden="true">
+      <svg viewBox="0 0 300 180">
+        <line class="welcome-guide__line welcome-guide__line--one" x1="46" y1="40" x2="238" y2="142"></line>
+        <line class="welcome-guide__line welcome-guide__line--two" x1="86" y1="150" x2="210" y2="30"></line>
+        <circle class="welcome-guide__star welcome-guide__star--one" cx="46" cy="40" r="8"></circle>
+        <circle class="welcome-guide__star welcome-guide__star--two" cx="238" cy="142" r="8"></circle>
+        <circle class="welcome-guide__star welcome-guide__star--three" cx="86" cy="150" r="8"></circle>
+        <circle class="welcome-guide__star welcome-guide__star--four" cx="210" cy="30" r="8"></circle>
+      </svg>
+      <span>Коротко и наглядно</span>
+    </div>
+    <div class="welcome-guide__copy">
+      <p class="task-type">Первый запуск</p>
+      <h2 id="welcomeGuideTitle">Разберёмся за минуту?</h2>
+      <p>Покажем, как ставить точки, начинать отдельную линию, снимать выбор с активной вершины и находить α-звезду.</p>
+      <div class="welcome-guide__actions">
+        <button id="welcomeGuideOpen" class="button button-primary" type="button">Показать руководство</button>
+        <button id="welcomeGuideSkip" class="button button-quiet" type="button">Начать без подсказок</button>
+      </div>
+      <small>Руководство всегда можно открыть кнопкой в верхней части страницы.</small>
+    </div>
+  </dialog>
+
   <dialog id="guideDialog" class="guide-dialog" aria-labelledby="guideTitle">
     <div class="guide-dialog__head">
       <div><p class="task-type">BERETS / АСТРА</p><h2 id="guideTitle">Руководство</h2></div>
@@ -310,6 +334,35 @@
       </svg>
       <span id="demoCaption" class="demo-loop-label" aria-hidden="true">Сначала поле пустое</span>
     </div>
+    <section class="guide-cross" aria-labelledby="guideCrossTitle">
+      <div class="guide-cross__copy">
+        <p class="task-type">Отдельные линии</p>
+        <h3 id="guideCrossTitle">Южный Крест: начните второй отрезок отдельно</h3>
+        <p>После первого отрезка повторно нажмите активную оранжевую точку. Выбор снимется, и следующая точка начнёт новую линию.</p>
+        <ol class="guide-cross__steps">
+          <li><b>Постройте первый отрезок.</b><span>Текущая вершина светится оранжевым.</span></li>
+          <li><b>Нажмите её ещё раз.</b><span>Оранжевая подсветка исчезнет — выбор снят.</span></li>
+          <li><b>Поставьте две новые точки.</b><span>Получится второй, не связанный с первым отрезок.</span></li>
+        </ol>
+      </div>
+      <div class="guide-cross__demo" role="img" aria-label="Анимация построения Южного Креста двумя отдельными пересекающимися отрезками">
+        <svg viewBox="0 0 520 390" aria-hidden="true">
+          <defs><pattern id="crossDemoGrid" width="26" height="26" patternUnits="userSpaceOnUse"><path d="M26 0H0V26" fill="none" stroke="rgba(255,255,255,.07)"></path></pattern></defs>
+          <rect class="cross-demo-bg" width="520" height="390" rx="14"></rect>
+          <rect x="0" y="0" width="520" height="390" rx="14" fill="url(#crossDemoGrid)"></rect>
+          <line class="cross-demo-axis" x1="260" y1="0" x2="260" y2="390"></line>
+          <line class="cross-demo-axis" x1="0" y1="195" x2="520" y2="195"></line>
+          <line class="cross-demo-edge" data-cross-edge="0" x1="100" y1="70" x2="410" y2="315"></line>
+          <line class="cross-demo-edge" data-cross-edge="1" x1="155" y1="320" x2="365" y2="50"></line>
+          <circle class="cross-demo-star" data-cross-star="0" cx="100" cy="70" r="9"></circle>
+          <circle class="cross-demo-star" data-cross-star="1" cx="410" cy="315" r="9"></circle>
+          <circle class="cross-demo-star" data-cross-star="2" cx="155" cy="320" r="9"></circle>
+          <circle class="cross-demo-star" data-cross-star="3" cx="365" cy="50" r="9"></circle>
+          <g class="cross-demo-cursor"><path d="M2 2v38l10-10 8 17 9-4-8-17h16z"></path><circle cx="4" cy="4" r="18"></circle></g>
+        </svg>
+        <div class="cross-demo-status"><p><i aria-hidden="true"></i><span id="crossDemoCaption">Сначала поставьте первую точку</span></p><button id="crossDemoReplay" type="button">Повторить</button></div>
+      </div>
+    </section>
     <button id="guideStart" class="button button-primary" type="button">Понятно, начать</button>
   </dialog>
 

@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 
-const [html, app, matcher, dataSource, authorSource, robots, sitemap, manifest, favicon] = await Promise.all([
+const [html, app, matcher, dataSource, authorSource, robots, sitemap, manifest, favicon, styles] = await Promise.all([
   readFile(new URL("../index.html", import.meta.url), "utf8"),
   readFile(new URL("../app.js", import.meta.url), "utf8"),
   readFile(new URL("../shape-matcher.js", import.meta.url), "utf8"),
@@ -11,6 +11,7 @@ const [html, app, matcher, dataSource, authorSource, robots, sitemap, manifest, 
   readFile(new URL("../sitemap.xml", import.meta.url), "utf8"),
   readFile(new URL("../site.webmanifest", import.meta.url), "utf8"),
   readFile(new URL("../favicon.svg", import.meta.url), "utf8"),
+  readFile(new URL("../styles.css", import.meta.url), "utf8"),
 ]);
 const authorSchemes = JSON.parse(authorSource);
 
@@ -74,6 +75,10 @@ if (html.includes("<details class=\"coordinate-entry-shell\"")) throw new Error(
 if (!html.includes("guide-demo__screen")) throw new Error("Animated visual guide is missing");
 if (!app.includes("resetGuideDemo") || !app.includes("Нажмите готовую вершину — она станет оранжевой") || !app.includes("форма Геркулеса зачтена")) throw new Error("Guide must demonstrate Hercules branch switching and final similarity");
 if ((html.match(/class="demo-star"/g) || []).length !== 15 || (html.match(/class="demo-edge"/g) || []).length !== 15) throw new Error("Guide must show the full 15-point Hercules schematic");
+if (!html.includes('id="welcomeGuideDialog"') || !html.includes('id="welcomeGuideOpen"') || !app.includes("GUIDE_INVITE_STORAGE_KEY") || !app.includes("offerFirstVisitGuide")) throw new Error("First-visit guide invitation is missing");
+if (!html.includes('id="guideCrossTitle"') || !html.includes('id="crossDemoCaption"') || !app.includes("startCrossGuideDemo") || !app.includes("Повторное нажатие: выбор снят")) throw new Error("Southern Cross line-release tutorial is missing");
+if (!app.includes("Сначала подведите курсор к нужному месту") || !app.includes("Линия появляется только после постановки второй точки")) throw new Error("Guide animation must move, click, place the point, and only then draw the edge");
+if (!styles.includes(".grid-label { font-size: 20px; }") || !styles.includes(".axis-label { font-size: 24px; }") || !styles.includes(".berets-brand small, .astra-brand small { display: block")) throw new Error("Compact mobile coordinates and brand subtitles are missing");
 if (!app.includes("DEFAULT_PASS_PERCENT = 70") || !app.includes("preferences.passPercent") || app.includes("evaluateCoordinateShape")) throw new Error("Adjustable 70% transform-invariant grading must remain");
 if (!html.includes('id="thresholdRange"') || !html.includes('name="theme"') || !html.includes('id="starNameChoices"')) throw new Error("Training threshold, theme and alpha-name quiz controls are missing");
 if (!app.includes('button.addEventListener("pointerup", () => button.blur())') || app.includes('elements.starNameChoices.querySelector("button")?.focus()')) throw new Error("Pointer-selected alpha-name answers must not retain a misleading focus outline");

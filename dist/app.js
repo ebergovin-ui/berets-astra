@@ -5,6 +5,7 @@
   const REFERENCE_STORAGE_KEY = "astra-reference-overrides-v1";
   const PERSONAL_STORAGE_KEY = "astra-personal-objects-v1";
   const PREFERENCE_STORAGE_KEY = "astra-training-preferences-v1";
+  const GUIDE_INVITE_STORAGE_KEY = "astra-guide-invite-seen-v1";
   const MASTERY_VERSION = 2;
   const MASTERY_TARGET = 5;
   const DEFAULT_PASS_PERCENT = 70;
@@ -144,6 +145,9 @@
     guideDialog: $("#guideDialog"),
     guideClose: $("#guideClose"),
     guideStart: $("#guideStart"),
+    welcomeGuideDialog: $("#welcomeGuideDialog"),
+    welcomeGuideOpen: $("#welcomeGuideOpen"),
+    welcomeGuideSkip: $("#welcomeGuideSkip"),
     settingsButton: $("#settingsButton"),
     modeSwitcher: $("#modeSwitcher"),
     practiceModeButton: $("#practiceModeButton"),
@@ -196,6 +200,12 @@
     demoActionButton: $(".demo-button--done"),
     demoStars: [...document.querySelectorAll(".demo-star")],
     demoEdges: [...document.querySelectorAll(".demo-edge")],
+    crossDemoCaption: $("#crossDemoCaption"),
+    crossDemoReplay: $("#crossDemoReplay"),
+    crossDemoCursor: $(".cross-demo-cursor"),
+    crossDemoStatus: $(".cross-demo-status"),
+    crossDemoStars: [...document.querySelectorAll(".cross-demo-star")],
+    crossDemoEdges: [...document.querySelectorAll(".cross-demo-edge")],
   };
 
   const requestedId = new URLSearchParams(location.search).get("object");
@@ -232,6 +242,8 @@
     resultInterval: null,
     guideTimer: null,
     guideFrame: 0,
+    crossGuideTimer: null,
+    crossGuideFrame: 0,
     lastSimilarity: null,
     shapeMapping: null,
     pendingUserIndex: null,
@@ -258,6 +270,7 @@
 
   const GUIDE_POINTS = [[646, 248], [764, 287], [697, 379], [629, 353], [528, 169], [697, 103], [832, 248], [883, 221], [933, 300], [680, 471], [528, 497], [528, 392], [461, 313], [461, 274], [427, 261]];
   const GUIDE_DONE = [190, 419];
+  const CROSS_GUIDE_POINTS = [[100, 70], [410, 315], [155, 320], [365, 50]];
   const editor = {
     itemIndex: 0,
     points: [],
@@ -714,24 +727,35 @@
 
   function stopGuideDemo() {
     clearTimeout(state.guideTimer);
+    clearTimeout(state.crossGuideTimer);
     state.guideTimer = null;
+    state.crossGuideTimer = null;
   }
 
   function guideFrames() {
     const frames = [{ reset: true, delay: 850 }];
-    const addPoint = (index, edge, label = "Новая точка соединяется с активной") => frames.push({ cursor: GUIDE_POINTS[index], click: true, star: index, activate: index, edge, label, delay: 620 });
+    const moveTo = (point, label, delay = 520) => frames.push({ cursor: point, label, delay });
+    const addPoint = (index, edge, label = "Новая точка соединяется с активной") => {
+      moveTo(GUIDE_POINTS[index], "Сначала подведите курсор к нужному месту");
+      frames.push({ click: true, star: index, activate: index, label: "Нажатие ставит точку — она становится активной", delay: 220 });
+      if (edge !== null && edge !== undefined) frames.push({ edge, label, delay: 430 });
+    };
     addPoint(0, null, "Первая точка становится активной и светится оранжевым");
     addPoint(1, 0); addPoint(2, 1); addPoint(3, 2);
-    frames.push({ cursor: GUIDE_POINTS[0], click: true, edge: 3, deactivate: true, label: "Замкните центральный контур", delay: 650 });
+    moveTo(GUIDE_POINTS[0], "Вернитесь к первой точке, чтобы замкнуть контур");
+    frames.push({ click: true, activate: 0, label: "Нажмите готовую вершину", delay: 220 });
+    frames.push({ edge: 3, deactivate: true, label: "Контур замкнут — линия появилась после нажатия", delay: 520 });
     const branch = (root, points, edges) => {
-      frames.push({ cursor: GUIDE_POINTS[root], activate: root, click: true, label: "Нажмите готовую вершину — она станет оранжевой", delay: 760 });
+      moveTo(GUIDE_POINTS[root], "Подведите курсор к готовой вершине");
+      frames.push({ activate: root, click: true, label: "Нажмите готовую вершину — она станет оранжевой", delay: 430 });
       points.forEach((pointIndex, offset) => addPoint(pointIndex, edges[offset], "Продолжайте новую ветвь из выбранной вершины"));
     };
     branch(0, [4, 5], [4, 5]);
     branch(1, [6, 7, 8], [6, 7, 8]);
     branch(2, [9, 10], [9, 10]);
     branch(3, [11, 12, 13, 14], [11, 12, 13, 14]);
-    frames.push({ cursor: GUIDE_DONE, press: "done", label: "Когда рисунок готов — нажмите «Готово»", delay: 700 });
+    moveTo(GUIDE_DONE, "Когда рисунок готов, перейдите к кнопке проверки");
+    frames.push({ press: "done", label: "Нажмите «Готово — проверить»", delay: 700 });
     frames.push({ label: "Сходство 100% · форма Геркулеса зачтена", delay: 1500 });
     return frames;
   }
@@ -771,9 +795,95 @@
       elements.demoStars.forEach((star) => star.classList.add("is-visible"));
       elements.demoEdges.forEach((edge) => edge.classList.add("is-visible"));
       elements.demoCaption.textContent = "Выберите готовую вершину для новой ветви, затем нажмите «Готово»";
+      elements.crossDemoStars.forEach((star) => star.classList.add("is-visible"));
+      elements.crossDemoEdges.forEach((edge) => edge.classList.add("is-visible"));
+      elements.crossDemoCaption.textContent = "Повторное нажатие снимает выбор; следующая точка начинает отдельную линию";
       return;
     }
     runGuideFrame();
+    startCrossGuideDemo();
+  }
+
+  function resetCrossGuideDemo() {
+    clearTimeout(state.crossGuideTimer);
+    elements.crossDemoStars.forEach((star) => star.classList.remove("is-visible", "is-active"));
+    elements.crossDemoEdges.forEach((edge) => edge.classList.remove("is-visible"));
+    elements.crossDemoCursor.classList.remove("is-clicking");
+    elements.crossDemoCursor.style.transform = `translate(${CROSS_GUIDE_POINTS[0][0]}px, ${CROSS_GUIDE_POINTS[0][1]}px)`;
+    elements.crossDemoStatus.classList.remove("is-released");
+    elements.crossDemoCaption.textContent = "Сначала поставьте первую точку";
+  }
+
+  function crossGuideFrames() {
+    const frames = [{ reset: true, delay: 700 }];
+    const moveTo = (index, label) => frames.push({ cursor: CROSS_GUIDE_POINTS[index], label, delay: 520 });
+    const place = (index, edge = null) => {
+      moveTo(index, "Подведите курсор и нажмите");
+      frames.push({ click: true, star: index, activate: index, label: "Точка поставлена и стала активной", delay: 220 });
+      if (edge !== null) frames.push({ edge, label: "Линия появляется только после постановки второй точки", delay: 520 });
+    };
+    place(0);
+    place(1, 0);
+    frames.push({ label: "Чтобы начать отдельный отрезок, нажмите активную точку ещё раз", delay: 900 });
+    frames.push({ cursor: CROSS_GUIDE_POINTS[1], click: true, release: true, label: "Повторное нажатие: выбор снят", delay: 850 });
+    place(2);
+    place(3, 1);
+    frames.push({ deactivate: true, label: "Готово: два независимых отрезка образуют Южный Крест", delay: 1700 });
+    return frames;
+  }
+
+  function runCrossGuideFrame() {
+    const frames = crossGuideFrames();
+    if (state.crossGuideFrame >= frames.length) state.crossGuideFrame = 0;
+    const frame = frames[state.crossGuideFrame];
+    elements.crossDemoCursor.classList.remove("is-clicking");
+    if (frame.reset) resetCrossGuideDemo();
+    if (frame.cursor) elements.crossDemoCursor.style.transform = `translate(${frame.cursor[0]}px, ${frame.cursor[1]}px)`;
+    if (frame.star !== undefined) elements.crossDemoStars[frame.star]?.classList.add("is-visible");
+    if (frame.edge !== null && frame.edge !== undefined) elements.crossDemoEdges[frame.edge]?.classList.add("is-visible");
+    if (frame.activate !== undefined) {
+      elements.crossDemoStars.forEach((star) => star.classList.remove("is-active"));
+      elements.crossDemoStars[frame.activate]?.classList.add("is-active");
+      elements.crossDemoStatus.classList.remove("is-released");
+    }
+    if (frame.release || frame.deactivate) {
+      elements.crossDemoStars.forEach((star) => star.classList.remove("is-active"));
+      elements.crossDemoStatus.classList.toggle("is-released", Boolean(frame.release));
+    }
+    if (frame.click) {
+      void elements.crossDemoCursor.getBoundingClientRect();
+      elements.crossDemoCursor.classList.add("is-clicking");
+    }
+    if (frame.label) elements.crossDemoCaption.textContent = frame.label;
+    state.crossGuideFrame += 1;
+    state.crossGuideTimer = setTimeout(runCrossGuideFrame, frame.delay);
+  }
+
+  function startCrossGuideDemo() {
+    clearTimeout(state.crossGuideTimer);
+    state.crossGuideFrame = 0;
+    resetCrossGuideDemo();
+    runCrossGuideFrame();
+  }
+
+  function rememberGuideInvite() {
+    try { localStorage.setItem(GUIDE_INVITE_STORAGE_KEY, "1"); } catch { /* private mode */ }
+  }
+
+  function openGuide() {
+    rememberGuideInvite();
+    if (elements.welcomeGuideDialog.open) elements.welcomeGuideDialog.close();
+    elements.guideDialog.showModal();
+    startGuideDemo();
+  }
+
+  function offerFirstVisitGuide() {
+    let seen = false;
+    try { seen = localStorage.getItem(GUIDE_INVITE_STORAGE_KEY) === "1"; } catch { /* private mode */ }
+    if (seen) return;
+    setTimeout(() => {
+      if (![...document.querySelectorAll("dialog")].some((dialog) => dialog.open)) elements.welcomeGuideDialog.showModal();
+    }, 520);
   }
 
   function edgeKey(a, b) { return a < b ? `${a}-${b}` : `${b}-${a}`; }
@@ -1985,9 +2095,20 @@
     discardPersonalDraft();
     closePersonalForm();
   });
-  elements.guideButton.addEventListener("click", () => { elements.guideDialog.showModal(); startGuideDemo(); });
+  elements.guideButton.addEventListener("click", openGuide);
+  elements.welcomeGuideOpen.addEventListener("click", openGuide);
+  elements.welcomeGuideSkip.addEventListener("click", () => {
+    rememberGuideInvite();
+    elements.welcomeGuideDialog.close();
+    elements.sky.focus();
+  });
+  elements.welcomeGuideDialog.addEventListener("click", (event) => {
+    if (event.target === elements.welcomeGuideDialog) elements.welcomeGuideDialog.close();
+  });
+  elements.welcomeGuideDialog.addEventListener("close", rememberGuideInvite);
   elements.guideClose.addEventListener("click", () => elements.guideDialog.close());
   elements.guideStart.addEventListener("click", () => { elements.guideDialog.close(); elements.sky.focus(); });
+  elements.crossDemoReplay.addEventListener("click", startCrossGuideDemo);
   elements.guideDialog.addEventListener("click", (event) => {
     if (event.target === elements.guideDialog) elements.guideDialog.close();
   });
@@ -2037,4 +2158,5 @@
   elements.roundTotal.textContent = objects.length;
   saveStats();
   loadNext();
+  offerFirstVisitGuide();
 })();
