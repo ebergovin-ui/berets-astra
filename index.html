@@ -223,6 +223,7 @@
     <p class="task-type">Режим проверки знаний</p>
     <h2 id="testIntroTitle">10 созвездий.<br>10 минут.</h2>
     <p>За каждое задание можно получить один балл. Для этого нужно с первой попытки набрать не менее 70% сходства, выбрать α-звезду и правильно назвать её.</p>
+    <p class="test-integrity-rule">Не покидайте страницу во время контрольной: первый выход вызовет предупреждение, повторный обнулит текущее задание.</p>
     <dl class="test-rules">
       <div><dt>10:00</dt><dd>общее время на весь тест</dd></div>
       <div><dt>70%</dt><dd>минимальное сходство формы</dd></div>
@@ -232,6 +233,13 @@
       <button id="testStartButton" class="button button-primary" type="button">Начать тест</button>
       <button id="testCancelButton" class="button button-quiet" type="button">Отмена</button>
     </div>
+  </dialog>
+
+  <dialog id="testIntegrityDialog" class="integrity-dialog" aria-labelledby="testIntegrityTitle">
+    <p class="task-type">Правила контрольной</p>
+    <h2 id="testIntegrityTitle">Не покидайте страницу</h2>
+    <p id="testIntegrityText">Это первое предупреждение. При следующем переходе в другую вкладку или приложение текущее задание получит 0 баллов.</p>
+    <button id="testIntegrityConfirm" class="button button-primary" type="button">Продолжить контрольную</button>
   </dialog>
 
   <div id="resultPanel" class="result-panel" role="dialog" aria-modal="true" aria-labelledby="resultTitle" hidden>

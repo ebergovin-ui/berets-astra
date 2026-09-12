@@ -5,6 +5,8 @@
   const REFERENCE_STORAGE_KEY = "astra-reference-overrides-v1";
   const PERSONAL_STORAGE_KEY = "astra-personal-objects-v1";
   const PREFERENCE_STORAGE_KEY = "astra-training-preferences-v1";
+  const MASTERY_VERSION = 2;
+  const MASTERY_TARGET = 5;
   const DEFAULT_PASS_PERCENT = 70;
   const TEST_TASK_COUNT = 10;
   const TEST_DURATION_MS = 10 * 60 * 1000;
@@ -25,6 +27,7 @@
 
   const preferences = readPreferences();
   const systemTheme = matchMedia("(prefers-color-scheme: light)");
+  const portraitPhone = matchMedia("(max-width: 720px) and (orientation: portrait)");
   function applyTheme() {
     document.documentElement.dataset.theme = preferences.theme === "system" ? (systemTheme.matches ? "light" : "dark") : preferences.theme;
   }
@@ -150,6 +153,10 @@
     testIntroClose: $("#testIntroClose"),
     testStartButton: $("#testStartButton"),
     testCancelButton: $("#testCancelButton"),
+    testIntegrityDialog: $("#testIntegrityDialog"),
+    testIntegrityTitle: $("#testIntegrityTitle"),
+    testIntegrityText: $("#testIntegrityText"),
+    testIntegrityConfirm: $("#testIntegrityConfirm"),
     settingsDialog: $("#settingsDialog"),
     settingsClose: $("#settingsClose"),
     referenceSelect: $("#referenceSelect"),
@@ -213,6 +220,7 @@
     history: [],
     keyboardCursor: { x: 0, y: 0 },
     stats: readStats(),
+    sessionMastered: new Set(),
     previousFocus: null,
     wrongIndices: new Set(),
     newEdgeKey: null,
@@ -237,6 +245,8 @@
       interval: null,
       transitionTimer: null,
       roundResolved: false,
+      visibilityExits: 0,
+      integrityNotice: null,
     },
   };
 
@@ -266,13 +276,24 @@
   function readStats() {
     try {
       const stored = JSON.parse(localStorage.getItem("astra-stats"));
-      if (!stored || !Number.isInteger(stored.streak) || !Array.isArray(stored.mastered)) throw new Error("invalid stats");
+      if (!stored || !Number.isInteger(stored.streak)) throw new Error("invalid stats");
+      const validIds = new Set(objects.map((item) => item.id));
+      const masteryIsCurrent = stored.masteryVersion === MASTERY_VERSION;
+      const objectStreaks = masteryIsCurrent && stored.objectStreaks && typeof stored.objectStreaks === "object"
+        ? Object.fromEntries(Object.entries(stored.objectStreaks)
+          .filter(([id, count]) => validIds.has(id) && Number.isInteger(count) && count > 0)
+          .map(([id, count]) => [id, Math.min(count, MASTERY_TARGET)]))
+        : {};
       return {
         streak: Math.max(0, Math.min(stored.streak, 100000)),
-        mastered: [...new Set(stored.mastered.filter((id) => objects.some((item) => item.id === id)))],
+        masteryVersion: MASTERY_VERSION,
+        objectStreaks,
+        mastered: masteryIsCurrent && Array.isArray(stored.mastered)
+          ? [...new Set(stored.mastered.filter((id) => validIds.has(id) && objectStreaks[id] >= MASTERY_TARGET))]
+          : [],
       };
     } catch {
-      return { streak: 0, mastered: [] };
+      return { streak: 0, masteryVersion: MASTERY_VERSION, objectStreaks: {}, mastered: [] };
     }
   }
 
@@ -280,6 +301,21 @@
     try { localStorage.setItem("astra-stats", JSON.stringify(state.stats)); } catch { /* private mode */ }
     elements.streak.textContent = state.stats.streak;
     elements.mastered.textContent = state.stats.mastered.length;
+  }
+
+  function resetItemMastery(itemId) {
+    const hadProgress = Boolean(state.stats.objectStreaks[itemId]) || state.stats.mastered.includes(itemId);
+    delete state.stats.objectStreaks[itemId];
+    state.stats.mastered = state.stats.mastered.filter((id) => id !== itemId);
+    state.sessionMastered.delete(itemId);
+    return hadProgress;
+  }
+
+  function registerTrainingSkip() {
+    if (!state.item || state.test.active) return;
+    state.stats.streak = 0;
+    resetItemMastery(state.item.id);
+    saveStats();
   }
 
   function svgElement(tag, attributes = {}) {
@@ -1421,6 +1457,38 @@
     elements.gradedModeButton.setAttribute("aria-pressed", String(graded));
   }
 
+  function syncSkyViewport() {
+    elements.svg.setAttribute("viewBox", portraitPhone.matches ? "160 0 680 680" : "0 0 1000 680");
+  }
+
+  function showIntegrityNotice() {
+    if (!state.test.active || !state.test.integrityNotice) return;
+    const failed = state.test.integrityNotice === "failed";
+    elements.testIntegrityTitle.textContent = failed ? "Задание не засчитано" : "Не покидайте страницу";
+    elements.testIntegrityText.textContent = failed
+      ? "Повторный выход со страницы расценён как попытка воспользоваться подсказкой. Текущее задание получает 0 баллов."
+      : "Это первое предупреждение. При следующем переходе в другую вкладку или приложение текущее задание получит 0 баллов.";
+    elements.testIntegrityConfirm.textContent = failed ? "Следующее задание" : "Продолжить контрольную";
+    if (!elements.testIntegrityDialog.open) elements.testIntegrityDialog.showModal();
+    elements.testIntegrityConfirm.focus();
+  }
+
+  function handleTestVisibility() {
+    if (!state.test.active) return;
+    if (!document.hidden) {
+      showIntegrityNotice();
+      return;
+    }
+    state.test.visibilityExits += 1;
+    if (state.test.visibilityExits === 1) {
+      state.test.integrityNotice = "warning";
+      return;
+    }
+    if (state.test.roundResolved) return;
+    state.test.integrityNotice = "failed";
+    resolveTestRound(false, "Повторный выход со страницы во время контрольной.", false);
+  }
+
   function startTest() {
     const candidates = objects
       .map((item, index) => ({ item, index }))
@@ -1434,6 +1502,8 @@
     state.test.results = [];
     state.test.endsAt = Date.now() + TEST_DURATION_MS;
     state.test.roundResolved = false;
+    state.test.visibilityExits = 0;
+    state.test.integrityNotice = null;
     clearInterval(state.test.interval);
     clearTimeout(state.test.transitionTimer);
     elements.testIntroDialog.close();
@@ -1448,7 +1518,7 @@
     loadNext();
   }
 
-  function resolveTestRound(passed, reason) {
+  function resolveTestRound(passed, reason, autoAdvance = true) {
     if (!state.test.active || state.test.roundResolved) return;
     state.test.roundResolved = true;
     state.phase = "test-transition";
@@ -1468,7 +1538,7 @@
     elements.testScore.textContent = state.test.score;
     setStatus(passed ? `+1 балл. ${reason}` : `0 баллов. ${reason}`, passed ? "success" : "error");
     showToast(passed ? "+1 балл" : "0 баллов", reason, passed ? "success" : "error", 1100);
-    state.test.transitionTimer = setTimeout(loadNext, 1150);
+    if (autoAdvance) state.test.transitionTimer = setTimeout(loadNext, 1150);
   }
 
   function finishTest(timedOut) {
@@ -1479,6 +1549,8 @@
     elements.feedbackToast.hidden = true;
     elements.feedbackToast.classList.remove("is-visible");
     state.test.active = false;
+    state.test.integrityNotice = null;
+    if (elements.testIntegrityDialog.open) elements.testIntegrityDialog.close();
     state.test.summary = true;
     elements.testHud.hidden = true;
     elements.testHud.classList.remove("is-urgent");
@@ -1561,14 +1633,46 @@
     elements.feedbackToast.hidden = true;
     const clean = state.failedChecks === 0 && state.hintCount === 0 && !state.fullAnswer;
     state.stats.streak = clean ? state.stats.streak + 1 : 0;
-    if (clean && !state.stats.mastered.includes(state.item.id)) state.stats.mastered.push(state.item.id);
+    const wasMastered = state.stats.mastered.includes(state.item.id);
+    let masteryOutcome = "";
+    if (clean) {
+      if (wasMastered) {
+        state.stats.objectStreaks[state.item.id] = MASTERY_TARGET;
+        state.sessionMastered.add(state.item.id);
+        masteryOutcome = "verified";
+      } else {
+        const itemStreak = Math.min((state.stats.objectStreaks[state.item.id] || 0) + 1, MASTERY_TARGET);
+        state.stats.objectStreaks[state.item.id] = itemStreak;
+        if (itemStreak >= MASTERY_TARGET) {
+          state.stats.mastered.push(state.item.id);
+          state.sessionMastered.add(state.item.id);
+          masteryOutcome = "mastered";
+        } else {
+          masteryOutcome = "progress";
+        }
+      }
+    } else if (resetItemMastery(state.item.id)) {
+      masteryOutcome = "reset";
+    }
     saveStats();
-    elements.resultLabel.textContent = clean ? "Без подсказок" : "Задание завершено";
-    elements.resultTitle.textContent = clean ? "Точно" : "Готово";
+    elements.resultLabel.textContent = masteryOutcome === "mastered" || masteryOutcome === "verified"
+      ? "Созвездие освоено"
+      : clean ? "Без подсказок" : "Задание завершено";
+    elements.resultTitle.textContent = masteryOutcome === "mastered"
+      ? "5 из 5"
+      : masteryOutcome === "verified" ? "Подтверждено" : clean ? "Точно" : "Готово";
     const similarityNote = Number.isFinite(state.lastSimilarity) ? ` Сходство — ${state.lastSimilarity}%.` : "";
-    elements.resultText.textContent = clean
-      ? `Форма совпала, а ключевая звезда отмечена и названа верно.${similarityNote}`
-      : `Схема разобрана. Повторите её позже без подсказки, чтобы закрепить.${similarityNote}`;
+    const itemStreak = state.stats.objectStreaks[state.item.id] || 0;
+    if (masteryOutcome === "mastered") {
+      elements.resultText.textContent = `${state.item.name} выполнено правильно 5 раз подряд и больше не появится в этой серии.${similarityNote}`;
+    } else if (masteryOutcome === "verified") {
+      elements.resultText.textContent = `Проверочное повторение пройдено. ${state.item.name} остаётся освоенным и больше не появится в этой серии.${similarityNote}`;
+    } else if (clean) {
+      elements.resultText.textContent = `Форма совпала, а ключевая звезда отмечена и названа верно. Серия для этого задания: ${itemStreak} из ${MASTERY_TARGET}.${similarityNote}`;
+    } else {
+      const resetNote = masteryOutcome === "reset" ? " Серия правильных ответов и статус освоения сброшены." : "";
+      elements.resultText.textContent = `Схема разобрана. Повторите её позже без подсказки, чтобы закрепить.${resetNote}${similarityNote}`;
+    }
     renderAnswerFact();
     state.previousFocus = document.activeElement;
     document.querySelector(".topbar").inert = true;
@@ -1631,8 +1735,16 @@
       state.item = objects[state.test.deck[state.test.position]];
       state.test.position += 1;
     } else {
+      let available = objects.map((_, index) => index).filter((index) => !state.sessionMastered.has(objects[index].id));
+      if (!available.length) {
+        state.sessionMastered.clear();
+        available = [...objects.keys()];
+      }
+      while (state.deckPosition < state.deck.length && state.sessionMastered.has(objects[state.deck[state.deckPosition]].id)) {
+        state.deckPosition += 1;
+      }
       if (state.deckPosition >= state.deck.length) {
-        state.deck = shuffle([...objects.keys()]);
+        state.deck = shuffle(available);
         state.deckPosition = 0;
       }
       state.item = objects[state.deck[state.deckPosition]];
@@ -1738,7 +1850,10 @@
   elements.answerButton.addEventListener("click", revealAnswer);
   elements.skipButton.addEventListener("click", () => {
     if (state.test.active) resolveTestRound(false, "Задание пропущено.");
-    else loadNext();
+    else {
+      registerTrainingSkip();
+      loadNext();
+    }
   });
   elements.nextButton.addEventListener("click", () => {
     if (state.test.summary) closeTestSummary();
@@ -1765,6 +1880,13 @@
   elements.testIntroDialog.addEventListener("click", (event) => {
     if (event.target === elements.testIntroDialog) elements.testIntroDialog.close();
   });
+  elements.testIntegrityConfirm.addEventListener("click", () => {
+    const failed = state.test.integrityNotice === "failed";
+    state.test.integrityNotice = null;
+    elements.testIntegrityDialog.close();
+    if (failed && state.test.active && state.test.roundResolved) loadNext();
+  });
+  elements.testIntegrityDialog.addEventListener("cancel", (event) => event.preventDefault());
   elements.settingsClose.addEventListener("click", () => elements.settingsDialog.close());
   elements.personalAddToggle.addEventListener("click", () => {
     discardPersonalDraft();
@@ -1805,6 +1927,8 @@
     applyTheme();
   }));
   systemTheme.addEventListener?.("change", () => { if (preferences.theme === "system") applyTheme(); });
+  portraitPhone.addEventListener?.("change", syncSkyViewport);
+  document.addEventListener("visibilitychange", handleTestVisibility);
   elements.settingsDialog.addEventListener("click", (event) => {
     if (event.target === elements.settingsDialog) elements.settingsDialog.close();
   });
@@ -1859,6 +1983,7 @@
   });
 
   populateCoordinateLists();
+  syncSkyViewport();
   elements.demoScoreLabel.textContent = `ЗАЧЁТ ≥ ${preferences.passPercent}%`;
   elements.roundTotal.textContent = objects.length;
   saveStats();
