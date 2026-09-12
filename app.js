@@ -140,7 +140,9 @@
     guideClose: $("#guideClose"),
     guideStart: $("#guideStart"),
     settingsButton: $("#settingsButton"),
-    testButton: $("#testButton"),
+    modeSwitcher: $("#modeSwitcher"),
+    practiceModeButton: $("#practiceModeButton"),
+    gradedModeButton: $("#gradedModeButton"),
     testHud: $("#testHud"),
     testTimer: $("#testTimer"),
     testScore: $("#testScore"),
@@ -1407,6 +1409,14 @@
     if (remaining <= 0) finishTest(true);
   }
 
+  function setModeSelection(mode) {
+    const graded = mode === "graded";
+    elements.practiceModeButton.classList.toggle("is-active", !graded);
+    elements.gradedModeButton.classList.toggle("is-active", graded);
+    elements.practiceModeButton.setAttribute("aria-pressed", String(!graded));
+    elements.gradedModeButton.setAttribute("aria-pressed", String(graded));
+  }
+
   function startTest() {
     const candidates = objects
       .map((item, index) => ({ item, index }))
@@ -1424,7 +1434,7 @@
     clearTimeout(state.test.transitionTimer);
     elements.testIntroDialog.close();
     elements.testHud.hidden = false;
-    elements.testButton.textContent = "Завершить тест";
+    setModeSelection("graded");
     elements.settingsButton.disabled = true;
     elements.guideButton.disabled = true;
     elements.testScore.textContent = "0";
@@ -1468,7 +1478,6 @@
     state.test.summary = true;
     elements.testHud.hidden = true;
     elements.testHud.classList.remove("is-urgent");
-    elements.testButton.textContent = "Тестирование";
     elements.settingsButton.disabled = false;
     elements.guideButton.disabled = false;
     document.body.classList.remove("test-active");
@@ -1510,6 +1519,7 @@
     elements.resultPanel.classList.remove("is-counting");
     elements.resultPanel.classList.add("is-test-summary");
     document.querySelector(".topbar").inert = true;
+    elements.modeSwitcher.inert = true;
     elements.workspace.inert = true;
     document.body.classList.add("modal-open");
     elements.resultPanel.hidden = false;
@@ -1528,8 +1538,10 @@
     elements.skipButton.disabled = false;
     elements.addCoordinateButton.disabled = false;
     document.querySelector(".topbar").inert = false;
+    elements.modeSwitcher.inert = false;
     elements.workspace.inert = false;
     document.body.classList.remove("modal-open");
+    setModeSelection("practice");
     elements.roundTotal.textContent = objects.length;
     loadNext();
   }
@@ -1556,6 +1568,7 @@
     renderAnswerFact();
     state.previousFocus = document.activeElement;
     document.querySelector(".topbar").inert = true;
+    elements.modeSwitcher.inert = true;
     elements.workspace.inert = true;
     document.body.classList.add("modal-open");
     elements.resultPanel.hidden = false;
@@ -1686,6 +1699,7 @@
     elements.feedbackToast.classList.remove("is-visible");
     elements.coordinateError.textContent = "";
     document.querySelector(".topbar").inert = false;
+    elements.modeSwitcher.inert = false;
     elements.workspace.inert = false;
     document.body.classList.remove("modal-open");
     elements.answer.replaceChildren();
@@ -1729,13 +1743,17 @@
   elements.expandButton.addEventListener("click", toggleExpandedSky);
   elements.coordinateForm.addEventListener("submit", addCoordinateFromForm);
   elements.settingsButton.addEventListener("click", openReferenceSettings);
-  elements.testButton.addEventListener("click", () => {
+  elements.gradedModeButton.addEventListener("click", () => {
+    if (state.test.active) return;
+    elements.testIntroDialog.showModal();
+    elements.testStartButton.focus();
+  });
+  elements.practiceModeButton.addEventListener("click", () => {
     if (!state.test.active) {
-      elements.testIntroDialog.showModal();
-      elements.testStartButton.focus();
+      setModeSelection("practice");
       return;
     }
-    if (window.confirm("Завершить тест досрочно и показать текущий результат?")) finishTest(false);
+    if (window.confirm("Завершить контрольную досрочно и показать текущий результат?")) finishTest(false);
   });
   elements.testStartButton.addEventListener("click", startTest);
   elements.testIntroClose.addEventListener("click", () => elements.testIntroDialog.close());

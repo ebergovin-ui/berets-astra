@@ -85,13 +85,23 @@
         <span><b id="testTimer">10:00</b> осталось</span>
         <span><b id="testScore">0</b> / 10 баллов</span>
       </div>
-      <button id="testButton" class="guide-button test-button" type="button">Тестирование</button>
       <button id="settingsButton" class="guide-button" type="button">Настройки</button>
       <button id="guideButton" class="guide-button" type="button">Руководство</button>
       <span><b id="streakValue">0</b> серия</span>
       <span><b id="masteredValue">0</b> освоено</span>
     </div>
   </header>
+
+  <nav id="modeSwitcher" class="mode-switcher" aria-label="Режим работы">
+    <button id="practiceModeButton" class="mode-choice is-active" type="button" aria-pressed="true">
+      <span class="mode-choice__title">Тренировка</span>
+      <span class="mode-choice__meta">Без таймера и ограничения попыток</span>
+    </button>
+    <button id="gradedModeButton" class="mode-choice" type="button" aria-pressed="false">
+      <span class="mode-choice__title">Контрольная на оценку</span>
+      <span class="mode-choice__meta">10 созвездий за 10 минут · одна попытка</span>
+    </button>
+  </nav>
 
   <main id="workspace" class="workspace">
     <section class="brief" aria-labelledby="taskTitle">
