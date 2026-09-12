@@ -957,14 +957,19 @@
   }
 
   function nearestPoint(gridPoint, thresholdPixels = 25) {
-    const click = toSvg(gridPoint);
-    const rect = elements.svg.getBoundingClientRect();
-    const scaleX = rect.width / 1000;
-    const scaleY = rect.height / 680;
+    const matrix = elements.svg.getScreenCTM();
+    if (!matrix) return -1;
+    const toScreen = (point) => {
+      const svgPoint = elements.svg.createSVGPoint();
+      svgPoint.x = point.x;
+      svgPoint.y = point.y;
+      return svgPoint.matrixTransform(matrix);
+    };
+    const click = toScreen(toSvg(gridPoint));
     let best = { index: -1, distance: Infinity };
     state.points.forEach((point, index) => {
-      const pos = toSvg(point);
-      const distance = Math.hypot((pos.x - click.x) * scaleX, (pos.y - click.y) * scaleY);
+      const pos = toScreen(toSvg(point));
+      const distance = Math.hypot(pos.x - click.x, pos.y - click.y);
       if (distance < best.distance) best = { index, distance };
     });
     return best.distance <= thresholdPixels ? best.index : -1;
@@ -1054,10 +1059,13 @@
   }
 
   function pointerToGrid(event) {
-    const rect = elements.svg.getBoundingClientRect();
-    const x = ((event.clientX - rect.left) / rect.width) * 1000;
-    const y = ((event.clientY - rect.top) / rect.height) * 680;
-    return fromSvg(x, y);
+    const matrix = elements.svg.getScreenCTM();
+    if (!matrix) return { x: 0, y: 0 };
+    const pointer = elements.svg.createSVGPoint();
+    pointer.x = event.clientX;
+    pointer.y = event.clientY;
+    const local = pointer.matrixTransform(matrix.inverse());
+    return fromSvg(local.x, local.y);
   }
 
   function setStatus(message, tone = "") {
@@ -1872,7 +1880,11 @@
     if (event.button !== undefined && event.button !== 0) return;
     const star = event.target.closest?.(".user-point");
     const starIndex = Number(star?.dataset.index);
-    addGridPoint(Number.isInteger(starIndex) && state.points[starIndex] ? { ...state.points[starIndex] } : pointerToGrid(event));
+    const pointerPoint = pointerToGrid(event);
+    const starPoint = Number.isInteger(starIndex) ? state.points[starIndex] : null;
+    const shouldPreferStar = state.phase === "identify"
+      || state.points.length >= state.item.points.length && !state.points.some((point) => point.x === pointerPoint.x && point.y === pointerPoint.y);
+    addGridPoint(shouldPreferStar && starPoint ? { ...starPoint } : pointerPoint);
   });
   elements.hintButton.addEventListener("click", showHint);
   elements.undoButton.addEventListener("click", undo);
