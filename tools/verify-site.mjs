@@ -56,6 +56,7 @@ for (const object of objects) {
 }
 if (!objects.find((item) => item.id === "CVn")?.alphaAnyPoint) throw new Error("Canes Venatici must accept either endpoint as the alpha-star position");
 if (!objects.find((item) => item.id === "CMi")?.alphaAnyPoint) throw new Error("Canis Minor must accept either endpoint as the alpha-star position");
+if (JSON.stringify(objects.find((item) => item.id === "Tau")?.alphaAcceptedIndices) !== "[1,5]") throw new Error("Taurus must accept reference stars 2 and 6 as the alpha-star position");
 const alphaPool = [...new Set(objects.flatMap((item) => item.kind === "asterism" ? item.vertices.map((vertex) => vertex.star) : [item.alpha]).filter(Boolean))];
 for (const asterism of objects.filter((item) => item.kind === "asterism")) {
   const ownStars = new Set(asterism.vertices.map((vertex) => vertex.star));
@@ -80,8 +81,9 @@ if (!app.includes('state.item.vertices.forEach((vertex) => excludedNames.add(ver
 if (!html.includes('id="practiceModeButton"') || !html.includes('id="gradedModeButton"') || !html.includes('Контрольная на оценку') || !html.includes('id="testIntroDialog"') || !html.includes('id="testHud"')) throw new Error("Testing mode interface is missing");
 if (!html.includes('id="testIntegrityDialog"') || !app.includes('document.addEventListener("visibilitychange", handleTestVisibility)') || !app.includes('TEST_MAX_HIDDEN_MS = 5000') || !app.includes('disqualifyTest("Зафиксирован повторный выход') || !app.includes('disqualifyTest("Страница была скрыта дольше 5 секунд') || !app.includes('testIntegrityDialog.addEventListener("cancel"')) throw new Error("Testing mode full-attempt visibility disqualification is missing");
 if (!app.includes('portraitPhone') || !app.includes('"190 30 620 620"')) throw new Error("Portrait mobile field viewport optimization is missing");
-if (!app.includes("getScreenCTM()") || !app.includes("matrix.inverse()") || !app.includes("shouldPreferStar")) throw new Error("Precise adjacent mobile coordinate placement is missing");
+if (!app.includes("getScreenCTM()") || !app.includes("matrix.inverse()") || !app.includes("shouldPreferStar") || !app.includes('state.phase === "identify" ? pointerPoint')) throw new Error("Precise adjacent mobile coordinate placement and selection are missing");
 if (!app.includes('toolRow: $(".tool-row")') || !app.includes('elements.toolRow.classList.toggle("is-mobile-visible"')) throw new Error("Persistent mobile undo and clear controls are missing");
+if (!app.includes('Выберите α-звезду на схеме') || !app.includes('Теперь выберите её название') || !app.includes('starNameQuiz.setAttribute("aria-live", "polite")')) throw new Error("Mobile alpha-star handoff must remain explicit and accessible");
 if (!app.includes("MASTERY_TARGET = 5") || !app.includes("sessionMastered") || !app.includes("Проверочное повторение пройдено") || !app.includes("resetItemMastery")) throw new Error("Five-clean-round session mastery workflow is missing");
 if (html.includes('id="testButton"') || !app.includes('setModeSelection("graded")') || !app.includes('setModeSelection("practice")')) throw new Error("Testing mode must use the dedicated top-level mode switcher");
 if (!app.includes("TEST_TASK_COUNT = 10") || !app.includes("TEST_DURATION_MS = 10 * 60 * 1000") || !app.includes("TEST_PASS_PERCENT = 70")) throw new Error("Testing mode rules are incorrect");

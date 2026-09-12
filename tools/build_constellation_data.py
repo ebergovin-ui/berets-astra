@@ -445,6 +445,8 @@ def main():
         if item["kind"] == "constellation":
             item["alphaIndex"] = scheme["alphaIndex"]
             item["alphaAnyPoint"] = bool(scheme.get("alphaAnyPoint", False))
+            if "alphaAcceptedIndices" in scheme:
+                item["alphaAcceptedIndices"] = scheme["alphaAcceptedIndices"]
             item["pointNames"] = [f"Звезда №{index + 1}" for index in range(len(item["points"]))]
             item["pointNames"][item["alphaIndex"]] = item["alpha"]
 

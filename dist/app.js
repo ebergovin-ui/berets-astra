@@ -847,8 +847,13 @@
     });
     elements.count.textContent = pluralize(state.edges.length, "линия", "линии", "линий");
     const penDot = document.createElement("i");
-    elements.pen.replaceChildren(penDot, document.createTextNode(state.active === null ? " Линия не начата" : ` Продолжение из точки ${state.active + 1}`));
+    const identifying = state.phase === "identify";
+    const penMessage = identifying
+      ? (state.pendingUserIndex === null ? " Выберите α-звезду на схеме" : " Теперь выберите её название")
+      : (state.active === null ? " Линия не начата" : ` Продолжение из точки ${state.active + 1}`);
+    elements.pen.replaceChildren(penDot, document.createTextNode(penMessage));
     elements.pen.classList.toggle("is-live", state.active !== null);
+    elements.pen.classList.toggle("is-identify", identifying);
     elements.undoButton.disabled = state.phase !== "draw" || state.history.length === 0;
     elements.clearButton.disabled = state.phase !== "draw" || state.points.length === 0;
     elements.toolRow.classList.toggle("is-mobile-visible", state.phase === "draw" && (state.history.length > 0 || state.points.length > 0));
@@ -1377,6 +1382,7 @@
       elements.starNameChoices.append(button);
     });
     elements.starNameQuiz.hidden = false;
+    elements.starNameQuiz.setAttribute("aria-live", "polite");
   }
 
   function nodeSignature(points, index) {
@@ -1384,8 +1390,7 @@
     return normalized(distances);
   }
 
-  function alphaCandidate() {
-    const referenceIndex = state.item.alphaIndex;
+  function alphaCandidate(referenceIndex = state.item.alphaIndex) {
     const mappedIndex = state.shapeMapping?.[referenceIndex];
     if (Number.isInteger(mappedIndex) && mappedIndex >= 0) return mappedIndex;
     const refDegrees = degreeSequence(state.item.points.length, state.item.edges);
@@ -1405,8 +1410,9 @@
 
   function checkIdentification(selected) {
     state.pendingUserIndex = null;
-    const expected = alphaCandidate();
-    if (!state.item.alphaAnyPoint && selected !== expected) {
+    const acceptedReferenceIndices = state.item.alphaAcceptedIndices || [state.item.alphaIndex];
+    const acceptedUserIndices = new Set(acceptedReferenceIndices.map((referenceIndex) => alphaCandidate(referenceIndex)).filter(Number.isInteger));
+    if (!state.item.alphaAnyPoint && !acceptedUserIndices.has(selected)) {
       state.failedChecks += 1;
       state.wrongIndices.add(selected);
       elements.starNameQuiz.hidden = true;
@@ -1886,7 +1892,7 @@
     const starPoint = Number.isInteger(starIndex) ? state.points[starIndex] : null;
     const shouldPreferStar = state.phase === "identify"
       || state.points.length >= state.item.points.length && !state.points.some((point) => point.x === pointerPoint.x && point.y === pointerPoint.y);
-    addGridPoint(shouldPreferStar && starPoint ? { ...starPoint } : pointerPoint);
+    addGridPoint(state.phase === "identify" ? pointerPoint : (shouldPreferStar && starPoint ? { ...starPoint } : pointerPoint));
   });
   elements.hintButton.addEventListener("click", showHint);
   elements.undoButton.addEventListener("click", undo);
