@@ -112,6 +112,7 @@
     hintButton: $("#hintButton"),
     undoButton: $("#undoButton"),
     clearButton: $("#clearButton"),
+    toolRow: $(".tool-row"),
     doneButton: $("#doneButton"),
     answerButton: $("#answerButton"),
     skipButton: $("#skipButton"),
@@ -850,6 +851,7 @@
     elements.pen.classList.toggle("is-live", state.active !== null);
     elements.undoButton.disabled = state.phase !== "draw" || state.history.length === 0;
     elements.clearButton.disabled = state.phase !== "draw" || state.points.length === 0;
+    elements.toolRow.classList.toggle("is-mobile-visible", state.phase === "draw" && (state.history.length > 0 || state.points.length > 0));
     elements.doneButton.disabled = state.phase !== "draw";
     elements.pointCounter.textContent = pluralize(state.points.length, "точка", "точки", "точек");
     const inputDisabled = state.phase !== "draw";
@@ -1355,6 +1357,7 @@
       const button = document.createElement("button");
       button.type = "button";
       button.textContent = name;
+      button.addEventListener("pointerup", () => button.blur());
       button.addEventListener("click", () => {
         if (name !== correctName) {
           state.failedChecks += 1;
@@ -1374,7 +1377,6 @@
       elements.starNameChoices.append(button);
     });
     elements.starNameQuiz.hidden = false;
-    elements.starNameChoices.querySelector("button")?.focus();
   }
 
   function nodeSignature(points, index) {

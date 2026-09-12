@@ -607,7 +607,7 @@ kbd { border: 1px solid var(--line); border-bottom-color: #4a4a50; border-radius
   .mode-choice { min-height: 66px; padding: 11px 12px; }
   .mode-choice__title { font-size: .75rem; }
   .mode-choice__meta { font-size: .68rem; }
-  .workspace { min-height: auto; padding: 12px 0 calc(96px + env(safe-area-inset-bottom)); gap: 20px; }
+  .workspace { min-height: auto; padding: 12px 0 calc(154px + env(safe-area-inset-bottom)); gap: 20px; }
   .brief { display: block; }
   .brief { order: 2; }
   .sky-panel { grid-row: auto; order: 1; }
@@ -624,6 +624,9 @@ kbd { border: 1px solid var(--line); border-bottom-color: #4a4a50; border-radius
   .sky-panel:not(.is-expanded) #sourceLink { display: none; }
   .button-done:not(:disabled) { position: fixed; z-index: 50; right: 12px; bottom: max(10px, env(safe-area-inset-bottom)); left: 12px; width: auto; min-height: 58px; margin: 0; box-shadow: 0 16px 44px rgba(0, 0, 0, .56), 0 10px 30px rgba(199, 255, 94, .2); }
   .button-done:disabled { display: none; }
+  .tool-row:not(.is-mobile-visible) { display: none; }
+  .tool-row.is-mobile-visible { position: fixed; z-index: 49; right: 12px; bottom: calc(max(10px, env(safe-area-inset-bottom)) + 66px); left: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .tool-row.is-mobile-visible .button { min-height: 46px; background: rgba(27, 27, 31, .97); box-shadow: 0 10px 28px rgba(0, 0, 0, .42); }
   .expand-button { display: inline-flex; align-items: center; }
   .grid-label { font-size: 30px; }
   .axis-label { font-size: 32px; }
@@ -705,6 +708,9 @@ kbd { border: 1px solid var(--line); border-bottom-color: #4a4a50; border-radius
   .instruction p { margin-block: 6px; font-size: .78rem; }
   .button-done:not(:disabled) { position: fixed; z-index: 50; bottom: max(8px, env(safe-area-inset-bottom)); left: 10px; width: calc((100vw - 32px) * .384); min-height: 52px; margin: 0; box-shadow: 0 16px 44px rgba(0, 0, 0, .56), 0 10px 30px rgba(199, 255, 94, .2); }
   .button-done:disabled { display: none; }
+  .tool-row:not(.is-mobile-visible) { display: none; }
+  .tool-row.is-mobile-visible { position: fixed; z-index: 49; bottom: calc(max(8px, env(safe-area-inset-bottom)) + 60px); left: 10px; display: grid; width: calc((100vw - 32px) * .384); grid-template-columns: 1fr 1fr; gap: 8px; }
+  .tool-row.is-mobile-visible .button { min-height: 44px; padding-inline: 8px; background: rgba(27, 27, 31, .97); box-shadow: 0 10px 28px rgba(0, 0, 0, .42); }
   .coordinate-entry-shell { margin-top: 14px; }
   .shortcut-note { display: none; }
   body.test-active .workspace { padding-top: 8px; }
