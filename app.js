@@ -28,10 +28,12 @@
           practice: Boolean(stored.includeExtras?.practice),
           graded: Boolean(stored.includeExtras?.graded),
           quiz: Boolean(stored.includeExtras?.quiz),
+          quizGraded: Boolean(stored.includeExtras?.quizGraded),
         },
+        showAssessments: Boolean(stored.showAssessments),
       };
     } catch {
-      return { passPercent: DEFAULT_PASS_PERCENT, theme: "dark", includeExtras: { practice: false, graded: false, quiz: false } };
+      return { passPercent: DEFAULT_PASS_PERCENT, theme: "dark", showAssessments: false, includeExtras: { practice: false, graded: false, quiz: false, quizGraded: false } };
     }
   }
 
@@ -161,9 +163,11 @@
     practiceModeButton: $("#practiceModeButton"),
     gradedModeButton: $("#gradedModeButton"),
     quizModeButton: $("#quizModeButton"),
+    quizGradedModeButton: $("#quizGradedModeButton"),
     includeExtrasToggle: $("#includeExtrasToggle"),
     scopeModeText: $("#scopeModeText"),
     quizPanel: $("#quizPanel"),
+    quizStage: $(".quiz-stage"),
     quizProgress: $("#quizProgress"),
     quizScore: $("#quizScore"),
     quizAnswered: $("#quizAnswered"),
@@ -179,6 +183,11 @@
     testScore: $("#testScore"),
     testIntroDialog: $("#testIntroDialog"),
     testIntroClose: $("#testIntroClose"),
+    testIntroType: $("#testIntroType"),
+    testIntroTitle: $("#testIntroTitle"),
+    testIntroDescription: $("#testIntroDescription"),
+    testRuleValue: $("#testRuleValue"),
+    testRuleLabel: $("#testRuleLabel"),
     testStartButton: $("#testStartButton"),
     testCancelButton: $("#testCancelButton"),
     testExtrasToggle: $("#testExtrasToggle"),
@@ -217,6 +226,7 @@
     thresholdRange: $("#thresholdRange"),
     thresholdValue: $("#thresholdValue"),
     themeInputs: [...document.querySelectorAll('input[name="theme"]')],
+    showAssessmentsToggle: $("#showAssessmentsToggle"),
     demoScoreLabel: $("#demoScoreLabel"),
     demoCaption: $("#demoCaption"),
     demoCursor: $(".demo-cursor"),
@@ -288,8 +298,11 @@
       current: null,
       locked: false,
       previousId: null,
+      transitionTimer: null,
     },
     test: {
+      kind: "constellation",
+      pendingKind: "constellation",
       active: false,
       summary: false,
       deck: [],
@@ -740,6 +753,7 @@
     elements.thresholdRange.value = String(preferences.passPercent);
     elements.thresholdValue.textContent = `${preferences.passPercent}%`;
     elements.themeInputs.forEach((input) => { input.checked = input.value === preferences.theme; });
+    elements.showAssessmentsToggle.checked = preferences.showAssessments;
     elements.settingsDialog.showModal();
   }
 
@@ -1627,31 +1641,41 @@
       [elements.practiceModeButton, "practice"],
       [elements.gradedModeButton, "graded"],
       [elements.quizModeButton, "quiz"],
+      [elements.quizGradedModeButton, "quizGraded"],
     ];
     buttons.forEach(([button, value]) => {
       const active = value === mode;
       button.classList.toggle("is-active", active);
       button.setAttribute("aria-pressed", String(active));
     });
-    const quiz = mode === "quiz";
+    const quiz = mode === "quiz" || mode === "quizGraded";
     elements.workspace.hidden = quiz;
     elements.quizPanel.hidden = !quiz;
     elements.includeExtrasToggle.checked = Boolean(preferences.includeExtras[mode]);
-    const modeNames = { practice: "Тренировка", graded: "Контрольная", quiz: "Викторина" };
+    const modeNames = { practice: "Тренировка созвездий", graded: "Контрольная: созвездия", quiz: "Викторина", quizGraded: "Контрольная: викторина" };
     elements.scopeModeText.textContent = `Для режима «${modeNames[mode]}» · ещё ${extraBaseObjects.length} созвездий`;
   }
 
-  function quizPool() {
-    return objectIndicesForMode("quiz", true)
+  function syncAssessmentModes() {
+    elements.modeSwitcher.classList.toggle("has-assessments", preferences.showAssessments);
+    [elements.gradedModeButton, elements.quizGradedModeButton].forEach((button) => { button.hidden = !preferences.showAssessments; });
+  }
+
+  function quizPool(mode = state.mode === "quizGraded" ? "quizGraded" : "quiz") {
+    return objectIndicesForMode(mode, true)
       .map((index) => objects[index])
       .filter((item) => item.alpha && item.alphaScientific);
   }
 
-  function renderQuizQuestion() {
-    const pool = quizPool();
+  function renderQuizQuestion(focusFirstOption = false) {
+    clearTimeout(state.quiz.transitionTimer);
+    state.quiz.transitionTimer = null;
+    const testQuiz = state.test.active && state.test.kind === "quiz";
+    const pool = quizPool(testQuiz ? "quizGraded" : "quiz");
     if (pool.length < 5) return;
     const available = pool.filter((item) => item.id !== state.quiz.previousId);
-    const item = shuffle(available.length ? available : pool)[0];
+    const item = testQuiz ? objects[state.test.deck[state.test.position]] : shuffle(available.length ? available : pool)[0];
+    if (!item) { finishTest(false); return; }
     const direction = Math.random() < .5 ? "star-to-constellation" : "constellation-to-star";
     const correct = direction === "star-to-constellation" ? item.name : item.alpha;
     const distractors = [...new Set(pool
@@ -1661,11 +1685,12 @@
     state.quiz.current = { item, direction, correct, options };
     state.quiz.previousId = item.id;
     state.quiz.locked = false;
-    elements.quizProgress.textContent = `Вопрос ${state.quiz.answered + 1}`;
+    state.test.roundResolved = false;
+    elements.quizProgress.textContent = testQuiz ? `Вопрос ${state.test.position + 1} из ${TEST_TASK_COUNT}` : `Вопрос ${state.quiz.answered + 1}`;
     elements.quizQuestion.textContent = direction === "star-to-constellation"
       ? `${item.alpha} — α-звезда какого созвездия?`
       : `Какая звезда обозначается α в созвездии «${item.name}»?`;
-    elements.quizInstruction.textContent = "Выберите один из пяти вариантов. Ответ проверяется сразу.";
+    elements.quizInstruction.textContent = testQuiz ? "Выберите ответ. В контрольной даётся одна попытка." : "Выберите один из пяти вариантов. Ответ проверяется сразу.";
     elements.quizOptions.replaceChildren();
     options.forEach((answer, index) => {
       const button = document.createElement("button");
@@ -1683,32 +1708,62 @@
     elements.quizFeedback.hidden = true;
     elements.quizFeedback.className = "quiz-feedback";
     elements.quizNextButton.hidden = true;
+    elements.quizStage.classList.remove("is-entering");
+    requestAnimationFrame(() => {
+      elements.quizStage.classList.add("is-entering");
+      if (focusFirstOption) elements.quizOptions.querySelector("button")?.focus();
+    });
   }
 
   function answerQuiz(answer, selectedButton) {
     if (state.quiz.locked || !state.quiz.current) return;
     state.quiz.locked = true;
-    state.quiz.answered += 1;
+    const testQuiz = state.test.active && state.test.kind === "quiz";
+    if (!testQuiz) state.quiz.answered += 1;
     const correct = answer === state.quiz.current.correct;
-    if (correct) state.quiz.score += 1;
+    if (testQuiz) {
+      state.test.roundResolved = true;
+      if (correct) state.test.score += 1;
+      state.test.results.push({
+        name: state.quiz.current.item.name,
+        passed: correct,
+        similarity: null,
+        reason: correct ? "Верный ответ с первой попытки." : `Выбран ответ «${answer}».`,
+      });
+    } else if (correct) state.quiz.score += 1;
     [...elements.quizOptions.children].forEach((button) => {
       button.disabled = true;
       if (button.dataset.answer === state.quiz.current.correct) button.classList.add("is-correct");
     });
     if (!correct) selectedButton.classList.add("is-wrong");
-    elements.quizScore.textContent = state.quiz.score;
-    elements.quizAnswered.textContent = state.quiz.answered;
+    elements.quizScore.textContent = testQuiz ? state.test.score : state.quiz.score;
+    elements.quizAnswered.textContent = testQuiz ? state.test.results.length : state.quiz.answered;
+    if (testQuiz) elements.testScore.textContent = state.test.score;
     elements.quizFeedback.hidden = false;
     elements.quizFeedback.classList.add(correct ? "is-correct" : "is-wrong");
     elements.quizFeedbackTitle.textContent = correct ? "Верно" : "Неверно";
     elements.quizFeedbackText.textContent = `${state.quiz.current.item.alpha} — ${state.quiz.current.item.alphaDesignation}, альфа-звезда созвездия «${state.quiz.current.item.name}».`;
-    elements.quizNextButton.hidden = false;
-    elements.quizNextButton.focus();
+    if (testQuiz) {
+      elements.quizInstruction.textContent = "Ответ принят. Следующий вопрос…";
+      state.test.transitionTimer = setTimeout(() => {
+        state.test.position += 1;
+        if (state.test.position >= state.test.deck.length) finishTest(false);
+        else renderQuizQuestion(true);
+      }, 900);
+    } else if (correct) {
+      elements.quizInstruction.textContent = "Верно — следующий вопрос…";
+      state.quiz.transitionTimer = setTimeout(() => renderQuizQuestion(true), 850);
+    } else {
+      elements.quizNextButton.hidden = false;
+      elements.quizNextButton.focus();
+    }
   }
 
   function enterQuiz() {
     if (state.test.active) return;
     setModeSelection("quiz");
+    elements.quizScore.textContent = state.quiz.score;
+    elements.quizAnswered.textContent = state.quiz.answered;
     if (!state.quiz.current || state.quiz.locked) renderQuizQuestion();
   }
 
@@ -1768,8 +1823,35 @@
     disqualifyTest("Зафиксирован повторный выход со страницы во время контрольной.");
   }
 
+  function openTestIntro(kind) {
+    state.test.pendingKind = kind;
+    const quizTest = kind === "quiz";
+    const preferenceMode = quizTest ? "quizGraded" : "graded";
+    elements.testIntroType.textContent = quizTest ? "Контрольная-викторина" : "Контрольная по созвездиям";
+    elements.testIntroTitle.textContent = quizTest ? "10 вопросов. 10 минут." : "10 созвездий. 10 минут.";
+    elements.testIntroDescription.textContent = quizTest
+      ? "За каждый правильный ответ с первой попытки начисляется один балл. После выбора ответа контрольная сразу переходит дальше."
+      : "За каждое задание можно получить один балл. Для этого нужно с первой попытки набрать не менее 70% сходства, выбрать α-звезду и правильно назвать её.";
+    elements.testRuleValue.textContent = quizTest ? "5" : "70%";
+    elements.testRuleLabel.textContent = quizTest ? "вариантов ответа в каждом вопросе" : "минимальное сходство формы";
+    elements.testStartButton.textContent = quizTest ? "Начать викторину" : "Начать контрольную";
+    elements.testExtrasToggle.checked = preferences.includeExtras[preferenceMode];
+    setModeSelection(preferenceMode);
+    elements.testIntroDialog.showModal();
+    elements.testStartButton.focus();
+  }
+
+  function cancelTestIntro() {
+    elements.testIntroDialog.close();
+    setModeSelection(state.test.pendingKind === "quiz" ? "quiz" : "practice");
+  }
+
   function startTest() {
-    const candidates = objectIndicesForMode("graded", true);
+    const quizTest = state.test.pendingKind === "quiz";
+    const candidates = quizTest
+      ? objectIndicesForMode("quizGraded", true).filter((index) => objects[index].alpha && objects[index].alphaScientific)
+      : objectIndicesForMode("graded", true);
+    state.test.kind = quizTest ? "quiz" : "constellation";
     state.test.active = true;
     state.test.summary = false;
     state.test.deck = shuffle(candidates).slice(0, TEST_TASK_COUNT);
@@ -1789,15 +1871,22 @@
     clearTimeout(state.test.transitionTimer);
     elements.testIntroDialog.close();
     elements.testHud.hidden = false;
-    setModeSelection("graded");
+    setModeSelection(quizTest ? "quizGraded" : "graded");
     elements.includeExtrasToggle.disabled = true;
     elements.settingsButton.disabled = true;
     elements.guideButton.disabled = true;
     elements.testScore.textContent = "0";
+    elements.modeSwitcher.inert = true;
     document.body.classList.add("test-active");
     updateTestHud();
     state.test.interval = setInterval(updateTestHud, 250);
-    loadNext();
+    if (quizTest) {
+      state.quiz.locked = false;
+      state.quiz.current = null;
+      elements.quizScore.textContent = "0";
+      elements.quizAnswered.textContent = "0";
+      renderQuizQuestion();
+    } else loadNext();
   }
 
   function resolveTestRound(passed, reason, autoAdvance = true) {
@@ -1828,6 +1917,7 @@
     clearInterval(state.test.interval);
     clearTimeout(state.test.transitionTimer);
     clearTimeout(state.test.hiddenTimer);
+    clearTimeout(state.quiz.transitionTimer);
     state.test.hiddenTimer = null;
     clearTimeout(state.toastTimer);
     elements.feedbackToast.hidden = true;
@@ -1843,14 +1933,15 @@
     elements.includeExtrasToggle.disabled = false;
     document.body.classList.remove("test-active");
     const disqualified = state.test.disqualified;
-    elements.resultLabel.textContent = disqualified ? "Нарушение правил" : timedOut ? "Время вышло" : "Тест завершён";
+    const quizTest = state.test.kind === "quiz";
+    elements.resultLabel.textContent = disqualified ? "Нарушение правил" : timedOut ? "Время вышло" : quizTest ? "Викторина завершена" : "Тест завершён";
     elements.resultTitle.textContent = disqualified ? "Попытка не засчитана" : `${state.test.score} из ${TEST_TASK_COUNT}`;
     const completed = state.test.results.length;
     const verdict = state.test.score >= 8
-      ? "Отличный результат — схемы и ключевые звёзды запомнены уверенно."
+      ? quizTest ? "Отличный результат — названия созвездий и их α-звёзд запомнены уверенно." : "Отличный результат — схемы и ключевые звёзды запомнены уверенно."
       : state.test.score >= 6
         ? "Хорошая база. Повторите задания без балла и попробуйте ещё раз."
-        : "Стоит пройти обычную тренировку и затем повторить тест.";
+        : quizTest ? "Стоит потренироваться в обычной викторине и затем повторить контрольную." : "Стоит пройти обычную тренировку и затем повторить тест.";
     elements.resultText.textContent = disqualified
       ? `${state.test.disqualificationReason} Итоговый балл за эту попытку не выставляется.`
       : `${verdict} Выполнено заданий: ${completed} из ${TEST_TASK_COUNT}.`;
@@ -1879,18 +1970,20 @@
     }
     elements.answerFact.append(list);
     elements.resultTimer.hidden = true;
-    elements.nextButton.firstChild.textContent = "Вернуться к тренировке ";
+    elements.nextButton.firstChild.textContent = quizTest ? "Вернуться к викторине " : "Вернуться к тренировке ";
     elements.resultPanel.classList.remove("is-counting");
     elements.resultPanel.classList.add("is-test-summary");
     document.querySelector(".topbar").inert = true;
     elements.modeSwitcher.inert = true;
     elements.workspace.inert = true;
+    elements.quizPanel.inert = true;
     document.body.classList.add("modal-open");
     elements.resultPanel.hidden = false;
     elements.nextButton.focus();
   }
 
   function closeTestSummary() {
+    const quizTest = state.test.kind === "quiz";
     state.test.summary = false;
     elements.resultPanel.hidden = true;
     elements.resultPanel.classList.remove("is-test-summary", "is-counting");
@@ -1904,10 +1997,18 @@
     document.querySelector(".topbar").inert = false;
     elements.modeSwitcher.inert = false;
     elements.workspace.inert = false;
+    elements.quizPanel.inert = false;
     document.body.classList.remove("modal-open");
-    setModeSelection("practice");
-    resetPracticeDeck();
-    loadNext();
+    if (quizTest) {
+      setModeSelection("quiz");
+      elements.quizScore.textContent = state.quiz.score;
+      elements.quizAnswered.textContent = state.quiz.answered;
+      renderQuizQuestion();
+    } else {
+      setModeSelection("practice");
+      resetPracticeDeck();
+      loadNext();
+    }
   }
 
   function finishRound() {
@@ -2155,13 +2256,8 @@
   elements.expandButton.addEventListener("click", toggleExpandedSky);
   elements.coordinateForm.addEventListener("submit", addCoordinateFromForm);
   elements.settingsButton.addEventListener("click", openReferenceSettings);
-  elements.gradedModeButton.addEventListener("click", () => {
-    if (state.test.active) return;
-    setModeSelection("graded");
-    elements.testExtrasToggle.checked = preferences.includeExtras.graded;
-    elements.testIntroDialog.showModal();
-    elements.testStartButton.focus();
-  });
+  elements.gradedModeButton.addEventListener("click", () => { if (!state.test.active) openTestIntro("constellation"); });
+  elements.quizGradedModeButton.addEventListener("click", () => { if (!state.test.active) openTestIntro("quiz"); });
   elements.practiceModeButton.addEventListener("click", () => {
     if (!state.test.active) {
       setModeSelection("practice");
@@ -2174,31 +2270,32 @@
     if (window.confirm("Завершить контрольную досрочно и показать текущий результат?")) finishTest(false);
   });
   elements.quizModeButton.addEventListener("click", enterQuiz);
-  elements.quizNextButton.addEventListener("click", renderQuizQuestion);
+  elements.quizNextButton.addEventListener("click", () => renderQuizQuestion(true));
   elements.includeExtrasToggle.addEventListener("change", () => {
     preferences.includeExtras[state.mode] = elements.includeExtrasToggle.checked;
-    if (state.mode === "graded") elements.testExtrasToggle.checked = elements.includeExtrasToggle.checked;
+    if (state.mode === "graded" || state.mode === "quizGraded") elements.testExtrasToggle.checked = elements.includeExtrasToggle.checked;
     savePreferences();
     if (state.mode === "practice") {
       resetPracticeDeck();
       loadNext();
-    } else if (state.mode === "quiz") {
+    } else if (state.mode === "quiz" || state.mode === "quizGraded") {
       state.quiz.current = null;
-      renderQuizQuestion();
+      if (state.mode === "quiz") renderQuizQuestion();
     }
   });
   elements.testExtrasToggle.addEventListener("change", () => {
-    preferences.includeExtras.graded = elements.testExtrasToggle.checked;
+    const preferenceMode = state.test.pendingKind === "quiz" ? "quizGraded" : "graded";
+    preferences.includeExtras[preferenceMode] = elements.testExtrasToggle.checked;
     elements.includeExtrasToggle.checked = elements.testExtrasToggle.checked;
     savePreferences();
   });
   elements.testStartButton.addEventListener("click", startTest);
-  elements.testIntroClose.addEventListener("click", () => { elements.testIntroDialog.close(); setModeSelection("practice"); });
-  elements.testCancelButton.addEventListener("click", () => { elements.testIntroDialog.close(); setModeSelection("practice"); });
+  elements.testIntroClose.addEventListener("click", cancelTestIntro);
+  elements.testCancelButton.addEventListener("click", cancelTestIntro);
   elements.testIntroDialog.addEventListener("click", (event) => {
-    if (event.target === elements.testIntroDialog) { elements.testIntroDialog.close(); setModeSelection("practice"); }
+    if (event.target === elements.testIntroDialog) cancelTestIntro();
   });
-  elements.testIntroDialog.addEventListener("cancel", () => setModeSelection("practice"));
+  elements.testIntroDialog.addEventListener("cancel", () => setModeSelection(state.test.pendingKind === "quiz" ? "quiz" : "practice"));
   elements.testIntegrityConfirm.addEventListener("click", () => {
     state.test.integrityNotice = null;
     elements.testIntegrityDialog.close();
@@ -2243,6 +2340,19 @@
     savePreferences();
     applyTheme();
   }));
+  elements.showAssessmentsToggle.addEventListener("change", () => {
+    preferences.showAssessments = elements.showAssessmentsToggle.checked;
+    savePreferences();
+    syncAssessmentModes();
+    if (!preferences.showAssessments && !state.test.active && (state.mode === "graded" || state.mode === "quizGraded")) {
+      if (state.mode === "quizGraded") enterQuiz();
+      else {
+        setModeSelection("practice");
+        resetPracticeDeck();
+        loadNext();
+      }
+    }
+  });
   systemTheme.addEventListener?.("change", () => { if (preferences.theme === "system") applyTheme(); });
   portraitPhone.addEventListener?.("change", syncSkyViewport);
   document.addEventListener("visibilitychange", handleTestVisibility);
@@ -2312,6 +2422,7 @@
   populateCoordinateLists();
   syncSkyViewport();
   elements.demoScoreLabel.textContent = `ЗАЧЁТ ≥ ${preferences.passPercent}%`;
+  syncAssessmentModes();
   setModeSelection("practice");
   elements.roundTotal.textContent = objectIndicesForMode("practice").length;
   saveStats();

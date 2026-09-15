@@ -94,16 +94,20 @@
 
   <nav id="modeSwitcher" class="mode-switcher" aria-label="Режим работы">
     <button id="practiceModeButton" class="mode-choice is-active" type="button" aria-pressed="true">
-      <span class="mode-choice__title">Тренировка</span>
+      <span class="mode-choice__title">Тренировка созвездий</span>
       <span class="mode-choice__meta">Без таймера и ограничения попыток</span>
-    </button>
-    <button id="gradedModeButton" class="mode-choice" type="button" aria-pressed="false">
-      <span class="mode-choice__title">Контрольная на оценку</span>
-      <span class="mode-choice__meta">10 созвездий за 10 минут · одна попытка</span>
     </button>
     <button id="quizModeButton" class="mode-choice" type="button" aria-pressed="false">
       <span class="mode-choice__title">Викторина</span>
       <span class="mode-choice__meta">α-звёзды и созвездия · 5 вариантов</span>
+    </button>
+    <button id="gradedModeButton" class="mode-choice assessment-mode" type="button" aria-pressed="false" hidden>
+      <span class="mode-choice__title">Контрольная: созвездия</span>
+      <span class="mode-choice__meta">10 созвездий за 10 минут · одна попытка</span>
+    </button>
+    <button id="quizGradedModeButton" class="mode-choice assessment-mode" type="button" aria-pressed="false" hidden>
+      <span class="mode-choice__title">Контрольная: викторина</span>
+      <span class="mode-choice__meta">10 вопросов за 10 минут · одна попытка</span>
     </button>
     <label class="mode-scope" for="includeExtrasToggle">
       <input id="includeExtrasToggle" type="checkbox">
@@ -126,10 +130,6 @@
       </div>
       <button id="quizNextButton" class="button button-done quiz-next" type="button" hidden>Следующий вопрос</button>
     </section>
-    <aside class="quiz-orbit" aria-hidden="true">
-      <span>α</span>
-      <i></i><i></i><i></i><i></i><i></i>
-    </aside>
   </main>
 
   <main id="workspace" class="workspace">
@@ -249,13 +249,13 @@
 
   <dialog id="testIntroDialog" class="test-intro-dialog" aria-labelledby="testIntroTitle">
     <button id="testIntroClose" class="dialog-close" type="button" aria-label="Закрыть описание тестирования">×</button>
-    <p class="task-type">Режим проверки знаний</p>
+    <p id="testIntroType" class="task-type">Контрольная по созвездиям</p>
     <h2 id="testIntroTitle">10 созвездий.<br>10 минут.</h2>
-    <p>За каждое задание можно получить один балл. Для этого нужно с первой попытки набрать не менее 70% сходства, выбрать α-звезду и правильно назвать её.</p>
+    <p id="testIntroDescription">За каждое задание можно получить один балл. Для этого нужно с первой попытки набрать не менее 70% сходства, выбрать α-звезду и правильно назвать её.</p>
     <p class="test-integrity-rule">Не покидайте страницу во время контрольной: повторный выход аннулирует всю попытку. Выход дольше чем на 5 секунд аннулирует её сразу, без предупреждения.</p>
     <dl class="test-rules">
       <div><dt>10:00</dt><dd>общее время на весь тест</dd></div>
-      <div><dt>70%</dt><dd>минимальное сходство формы</dd></div>
+      <div><dt id="testRuleValue">70%</dt><dd id="testRuleLabel">минимальное сходство формы</dd></div>
       <div><dt>1</dt><dd>попытка на каждое задание</dd></div>
     </dl>
     <label class="test-extra-toggle" for="testExtrasToggle">
@@ -263,7 +263,7 @@
       <span><b>Добавить 6 новых созвездий</b><small>Они могут попасть в случайные 10 заданий</small></span>
     </label>
     <div class="test-intro-actions">
-      <button id="testStartButton" class="button button-primary" type="button">Начать тест</button>
+      <button id="testStartButton" class="button button-primary" type="button">Начать контрольную</button>
       <button id="testCancelButton" class="button button-quiet" type="button">Отмена</button>
     </div>
   </dialog>
@@ -416,6 +416,10 @@
           <label><input type="radio" name="theme" value="light"><span>Светлая</span></label>
         </div>
       </fieldset>
+      <label class="assessment-setting" for="showAssessmentsToggle">
+        <input id="showAssessmentsToggle" type="checkbox">
+        <span><b>Контрольные на оценку</b><small>Добавить в верхнее меню контрольную по созвездиям и контрольную-викторину</small></span>
+      </label>
     </section>
     <div class="reference-editor">
       <aside class="reference-list" aria-label="Список учебных объектов">
