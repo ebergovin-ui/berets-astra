@@ -1,11 +1,12 @@
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 
-const [html, app, matcher, dataSource, authorSource, robots, sitemap, manifest, favicon, styles] = await Promise.all([
+const [html, app, matcher, dataSource, extraSource, authorSource, robots, sitemap, manifest, favicon, styles] = await Promise.all([
   readFile(new URL("../index.html", import.meta.url), "utf8"),
   readFile(new URL("../app.js", import.meta.url), "utf8"),
   readFile(new URL("../shape-matcher.js", import.meta.url), "utf8"),
   readFile(new URL("../constellations.js", import.meta.url), "utf8"),
+  readFile(new URL("../extra-constellations.js", import.meta.url), "utf8"),
   readFile(new URL("./author_schemes.json", import.meta.url), "utf8"),
   readFile(new URL("../robots.txt", import.meta.url), "utf8"),
   readFile(new URL("../sitemap.xml", import.meta.url), "utf8"),
@@ -36,8 +37,13 @@ const sandbox = { window: {} };
 vm.runInNewContext(dataSource, sandbox, { timeout: 1000 });
 const objects = sandbox.window.CONSTELLATIONS;
 if (!Array.isArray(objects) || objects.length !== 27) throw new Error("Expected exactly 25 constellation and two asterism tasks");
+vm.runInNewContext(extraSource, sandbox, { timeout: 1000 });
+const extraObjects = sandbox.window.EXTRA_CONSTELLATIONS;
+if (!Array.isArray(extraObjects) || extraObjects.length !== 6) throw new Error("Expected exactly six optional extended constellations");
+if (extraObjects.some((item) => item.kind !== "constellation" || !item.alpha || !item.alphaScientific || !item.id.endsWith("-extra"))) throw new Error("Extended constellation metadata is incomplete");
+if (new Set([...objects, ...extraObjects].map((item) => item.id)).size !== objects.length + extraObjects.length) throw new Error("Core and extended constellation IDs must be unique");
 
-for (const object of objects) {
+for (const object of [...objects, ...extraObjects]) {
   const coordinateKeys = new Set();
   for (const point of object.points) {
     if (!Number.isInteger(point.x) || !Number.isInteger(point.y)) throw new Error(`${object.id}: non-integer coordinate`);
@@ -85,6 +91,9 @@ if (!html.includes('id="thresholdRange"') || !html.includes('name="theme"') || !
 if (!app.includes('button.addEventListener("pointerup", () => button.blur())') || app.includes('elements.starNameChoices.querySelector("button")?.focus()')) throw new Error("Pointer-selected alpha-name answers must not retain a misleading focus outline");
 if (!app.includes('state.item.vertices.forEach((vertex) => excludedNames.add(vertex.star))') || !app.includes('!excludedNames.has(name)')) throw new Error("Asterism answer choices must exclude the other stars of the current triangle");
 if (!html.includes('id="practiceModeButton"') || !html.includes('id="gradedModeButton"') || !html.includes('Контрольная на оценку') || !html.includes('id="testIntroDialog"') || !html.includes('id="testHud"')) throw new Error("Testing mode interface is missing");
+if (!html.includes('id="quizModeButton"') || !html.includes('id="quizPanel"') || !html.includes('id="includeExtrasToggle"') || !html.includes('id="testExtrasToggle"') || !html.includes('src="extra-constellations.js"')) throw new Error("Quiz mode or per-mode extended-set controls are missing");
+if (!app.includes('function renderQuizQuestion()') || !app.includes('function answerQuiz(') || !app.includes('star-to-constellation') || !app.includes('constellation-to-star') || !app.includes('slice(0, 4)')) throw new Error("Five-option bidirectional alpha-star quiz is missing");
+if (!app.includes('includeExtras: {') || !app.includes('objectIndicesForMode("practice")') || !app.includes('objectIndicesForMode("graded", true)') || !app.includes('objectIndicesForMode("quiz", true)')) throw new Error("Core and extended mode pools are not isolated");
 if (!html.includes('id="testIntegrityDialog"') || !app.includes('document.addEventListener("visibilitychange", handleTestVisibility)') || !app.includes('TEST_MAX_HIDDEN_MS = 5000') || !app.includes('disqualifyTest("Зафиксирован повторный выход') || !app.includes('disqualifyTest("Страница была скрыта дольше 5 секунд') || !app.includes('testIntegrityDialog.addEventListener("cancel"')) throw new Error("Testing mode full-attempt visibility disqualification is missing");
 if (!app.includes('portraitPhone') || !app.includes('"190 30 620 620"')) throw new Error("Portrait mobile field viewport optimization is missing");
 if (!app.includes("getScreenCTM()") || !app.includes("matrix.inverse()") || !app.includes("shouldPreferStar") || !app.includes('state.phase === "identify" ? pointerPoint')) throw new Error("Precise adjacent mobile coordinate placement and selection are missing");
@@ -115,4 +124,4 @@ if (!app.includes("Активная вершина переключена") || !
   throw new Error("Reference editor must support branch switching and isolated personal saves");
 }
 
-console.log("Verified: CSP, safe DOM, 27 protected references, personal constellations, testing mode, adjustable grading/theme, alpha-name quiz and shape invariants.");
+console.log("Verified: CSP, safe DOM, 27 protected references, six optional constellations, drawing/test/quiz modes, adjustable grading/theme and shape invariants.");

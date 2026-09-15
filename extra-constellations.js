@@ -1,0 +1,51 @@
+// Optional extended learning set. Scientific star names follow the IAU Catalogue of Star Names.
+window.EXTRA_CONSTELLATIONS = [
+  {
+    id: "Ari-extra", name: "Овен", kind: "constellation", alpha: "Хамаль",
+    alphaDesignation: "α Ari", alphaScientific: "α Овна", alphaIndex: 0,
+    pointNames: ["Хамаль", "Звезда №2", "Звезда №3", "Звезда №4"],
+    source: "extended-reference", sourceUrl: "https://commons.wikimedia.org/wiki/File:Aries_constellation_map.svg",
+    points: [{ x: -12, y: -2 }, { x: -4, y: 2 }, { x: 4, y: 7 }, { x: 10, y: 5 }],
+    edges: [[0, 1], [1, 2], [2, 3]], alphaAnyPoint: false,
+  },
+  {
+    id: "Eri-extra", name: "Эридан", kind: "constellation", alpha: "Ахернар",
+    alphaDesignation: "α Eri", alphaScientific: "α Эридана", alphaIndex: 9,
+    pointNames: ["Звезда №1", "Звезда №2", "Звезда №3", "Звезда №4", "Звезда №5", "Звезда №6", "Звезда №7", "Звезда №8", "Звезда №9", "Ахернар"],
+    source: "extended-reference", sourceUrl: "https://commons.wikimedia.org/wiki/File:Eridanus_constellation_map.svg",
+    points: [{ x: 11, y: 14 }, { x: 5, y: 10 }, { x: 8, y: 5 }, { x: 2, y: 1 }, { x: 5, y: -4 }, { x: -1, y: -7 }, { x: -6, y: -4 }, { x: -11, y: -8 }, { x: -8, y: -13 }, { x: -1, y: -15 }],
+    edges: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9]], alphaAnyPoint: false,
+  },
+  {
+    id: "Phe-extra", name: "Феникс", kind: "constellation", alpha: "Анкаа",
+    alphaDesignation: "α Phe", alphaScientific: "α Феникса", alphaIndex: 0,
+    pointNames: ["Анкаа", "Звезда №2", "Звезда №3", "Звезда №4", "Звезда №5"],
+    source: "extended-reference", sourceUrl: "https://commons.wikimedia.org/wiki/File:Phoenix_constellation_map.svg",
+    points: [{ x: -10, y: -6 }, { x: -4, y: 6 }, { x: 6, y: 10 }, { x: 12, y: -4 }, { x: 1, y: -1 }],
+    edges: [[0, 1], [1, 2], [2, 3], [3, 0], [1, 4], [4, 3]], alphaAnyPoint: false,
+  },
+  {
+    id: "Cet-extra", name: "Кит", kind: "constellation", alpha: "Менкар",
+    alphaDesignation: "α Cet", alphaScientific: "α Кита", alphaIndex: 0,
+    pointNames: ["Менкар", "Звезда №2", "Звезда №3", "Звезда №4", "Звезда №5", "Звезда №6", "Звезда №7", "Звезда №8"],
+    source: "extended-reference", sourceUrl: "https://commons.wikimedia.org/wiki/File:Cetus_constellation_map.svg",
+    points: [{ x: 11, y: 7 }, { x: 5, y: 2 }, { x: 8, y: -5 }, { x: 1, y: -9 }, { x: -5, y: -5 }, { x: -3, y: 2 }, { x: -10, y: 6 }, { x: -14, y: 12 }],
+    edges: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 1], [5, 6], [6, 7]], alphaAnyPoint: false,
+  },
+  {
+    id: "Lep-extra", name: "Заяц", kind: "constellation", alpha: "Арнеб",
+    alphaDesignation: "α Lep", alphaScientific: "α Зайца", alphaIndex: 2,
+    pointNames: ["Звезда №1", "Звезда №2", "Арнеб", "Звезда №4", "Звезда №5", "Звезда №6"],
+    source: "extended-reference", sourceUrl: "https://commons.wikimedia.org/wiki/File:Lepus_constellation_map.svg",
+    points: [{ x: -9, y: 10 }, { x: -4, y: 2 }, { x: 2, y: 5 }, { x: 8, y: 0 }, { x: 4, y: -8 }, { x: -5, y: -6 }],
+    edges: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 1]], alphaAnyPoint: false,
+  },
+  {
+    id: "Col-extra", name: "Голубь", kind: "constellation", alpha: "Факт",
+    alphaDesignation: "α Col", alphaScientific: "α Голубя", alphaIndex: 0,
+    pointNames: ["Факт", "Звезда №2", "Звезда №3", "Звезда №4", "Звезда №5"],
+    source: "extended-reference", sourceUrl: "https://commons.wikimedia.org/wiki/File:Columba_constellation_map.svg",
+    points: [{ x: -11, y: 6 }, { x: -3, y: 1 }, { x: 5, y: 4 }, { x: 11, y: -3 }, { x: 1, y: -8 }],
+    edges: [[0, 1], [1, 2], [2, 3], [1, 4], [4, 3]], alphaAnyPoint: false,
+  },
+];

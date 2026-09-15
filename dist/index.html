@@ -101,7 +101,36 @@
       <span class="mode-choice__title">Контрольная на оценку</span>
       <span class="mode-choice__meta">10 созвездий за 10 минут · одна попытка</span>
     </button>
+    <button id="quizModeButton" class="mode-choice" type="button" aria-pressed="false">
+      <span class="mode-choice__title">Викторина</span>
+      <span class="mode-choice__meta">α-звёзды и созвездия · 5 вариантов</span>
+    </button>
+    <label class="mode-scope" for="includeExtrasToggle">
+      <input id="includeExtrasToggle" type="checkbox">
+      <span><b>Дополнительные созвездия</b><small id="scopeModeText">Для режима «Тренировка» · ещё 6 созвездий</small></span>
+    </label>
   </nav>
+
+  <main id="quizPanel" class="quiz-panel" hidden>
+    <section class="quiz-stage" aria-labelledby="quizQuestion">
+      <div class="quiz-stage__head">
+        <p id="quizProgress" class="task-type">Вопрос 1</p>
+        <p class="quiz-score"><span id="quizScore">0</span> верно · <span id="quizAnswered">0</span> отвечено</p>
+      </div>
+      <h1 id="quizQuestion">Какая звезда обозначается α в созвездии «Лира»?</h1>
+      <p id="quizInstruction" class="quiz-instruction">Выберите один из пяти вариантов. Ответ проверяется сразу.</p>
+      <div id="quizOptions" class="quiz-options" role="group" aria-label="Варианты ответа"></div>
+      <div id="quizFeedback" class="quiz-feedback" role="status" aria-live="polite" hidden>
+        <b id="quizFeedbackTitle">Верно</b>
+        <span id="quizFeedbackText"></span>
+      </div>
+      <button id="quizNextButton" class="button button-done quiz-next" type="button" hidden>Следующий вопрос</button>
+    </section>
+    <aside class="quiz-orbit" aria-hidden="true">
+      <span>α</span>
+      <i></i><i></i><i></i><i></i><i></i>
+    </aside>
+  </main>
 
   <main id="workspace" class="workspace">
     <section class="brief" aria-labelledby="taskTitle">
@@ -204,7 +233,7 @@
     <div class="search-intro__facts">
       <article>
         <h3>Что можно тренировать?</h3>
-        <p>Контуры 25 созвездий, звёздные треугольники и названия ключевых звёзд. Задания идут в случайном порядке.</p>
+        <p>Контуры 25 основных и 6 дополнительных созвездий, звёздные треугольники и названия ключевых звёзд. Задания идут в случайном порядке.</p>
       </article>
       <article>
         <h3>Как проходит проверка?</h3>
@@ -229,6 +258,10 @@
       <div><dt>70%</dt><dd>минимальное сходство формы</dd></div>
       <div><dt>1</dt><dd>попытка на каждое задание</dd></div>
     </dl>
+    <label class="test-extra-toggle" for="testExtrasToggle">
+      <input id="testExtrasToggle" type="checkbox">
+      <span><b>Добавить 6 новых созвездий</b><small>Они могут попасть в случайные 10 заданий</small></span>
+    </label>
     <div class="test-intro-actions">
       <button id="testStartButton" class="button button-primary" type="button">Начать тест</button>
       <button id="testCancelButton" class="button button-quiet" type="button">Отмена</button>
@@ -428,6 +461,7 @@
   </dialog>
 
   <script src="constellations.js"></script>
+  <script src="extra-constellations.js"></script>
   <script src="shape-matcher.js"></script>
   <script src="app.js"></script>
 </body>

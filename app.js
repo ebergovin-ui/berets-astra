@@ -2,6 +2,9 @@
   "use strict";
 
   const baseObjects = window.CONSTELLATIONS.map((item) => structuredClone(item));
+  const extraBaseObjects = (window.EXTRA_CONSTELLATIONS || []).map((item) => ({ ...structuredClone(item), extendedObject: true }));
+  const protectedObjects = [...baseObjects, ...extraBaseObjects];
+  const coreObjectIds = new Set(baseObjects.map((item) => item.id));
   const REFERENCE_STORAGE_KEY = "astra-reference-overrides-v1";
   const PERSONAL_STORAGE_KEY = "astra-personal-objects-v1";
   const PREFERENCE_STORAGE_KEY = "astra-training-preferences-v1";
@@ -21,9 +24,14 @@
       return {
         passPercent: Number.isFinite(passPercent) ? Math.max(50, Math.min(100, Math.round(passPercent / 5) * 5)) : DEFAULT_PASS_PERCENT,
         theme: ["system", "dark", "light"].includes(stored.theme) ? stored.theme : "dark",
+        includeExtras: {
+          practice: Boolean(stored.includeExtras?.practice),
+          graded: Boolean(stored.includeExtras?.graded),
+          quiz: Boolean(stored.includeExtras?.quiz),
+        },
       };
     } catch {
-      return { passPercent: DEFAULT_PASS_PERCENT, theme: "dark" };
+      return { passPercent: DEFAULT_PASS_PERCENT, theme: "dark", includeExtras: { practice: false, graded: false, quiz: false } };
     }
   }
 
@@ -82,7 +90,7 @@
 
   const referenceOverrides = readReferenceOverrides();
   const personalObjects = readPersonalObjects();
-  const objects = baseObjects.map((item) => {
+  const objects = protectedObjects.map((item) => {
     const custom = referenceOverrides[item.id];
     if (!custom) return structuredClone(item);
     return { ...structuredClone(item), ...structuredClone(custom), customReference: true };
@@ -152,6 +160,20 @@
     modeSwitcher: $("#modeSwitcher"),
     practiceModeButton: $("#practiceModeButton"),
     gradedModeButton: $("#gradedModeButton"),
+    quizModeButton: $("#quizModeButton"),
+    includeExtrasToggle: $("#includeExtrasToggle"),
+    scopeModeText: $("#scopeModeText"),
+    quizPanel: $("#quizPanel"),
+    quizProgress: $("#quizProgress"),
+    quizScore: $("#quizScore"),
+    quizAnswered: $("#quizAnswered"),
+    quizQuestion: $("#quizQuestion"),
+    quizInstruction: $("#quizInstruction"),
+    quizOptions: $("#quizOptions"),
+    quizFeedback: $("#quizFeedback"),
+    quizFeedbackTitle: $("#quizFeedbackTitle"),
+    quizFeedbackText: $("#quizFeedbackText"),
+    quizNextButton: $("#quizNextButton"),
     testHud: $("#testHud"),
     testTimer: $("#testTimer"),
     testScore: $("#testScore"),
@@ -159,6 +181,7 @@
     testIntroClose: $("#testIntroClose"),
     testStartButton: $("#testStartButton"),
     testCancelButton: $("#testCancelButton"),
+    testExtrasToggle: $("#testExtrasToggle"),
     testIntegrityDialog: $("#testIntegrityDialog"),
     testIntegrityTitle: $("#testIntegrityTitle"),
     testIntegrityText: $("#testIntegrityText"),
@@ -210,10 +233,21 @@
 
   const requestedId = new URLSearchParams(location.search).get("object");
   const requestedIndex = objects.findIndex((item) => item.id === requestedId);
-  const randomDeck = shuffle([...objects.keys()].filter((index) => index !== requestedIndex));
+
+  function objectIndicesForMode(mode, constellationsOnly = false) {
+    const includeExtras = Boolean(preferences.includeExtras[mode]);
+    return objects
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => (includeExtras || coreObjectIds.has(item.id)) && (!constellationsOnly || item.kind === "constellation"))
+      .map(({ index }) => index);
+  }
+
+  const practiceIndices = objectIndicesForMode("practice");
+  const randomDeck = shuffle(practiceIndices.filter((index) => index !== requestedIndex));
 
   const state = {
-    deck: requestedIndex >= 0 ? [requestedIndex, ...randomDeck] : shuffle([...objects.keys()]),
+    mode: "practice",
+    deck: requestedIndex >= 0 ? [requestedIndex, ...randomDeck] : shuffle(practiceIndices),
     deckPosition: 0,
     item: null,
     phase: "draw",
@@ -248,6 +282,13 @@
     shapeMapping: null,
     pendingUserIndex: null,
     namedVertices: new Set(),
+    quiz: {
+      score: 0,
+      answered: 0,
+      current: null,
+      locked: false,
+      previousId: null,
+    },
     test: {
       active: false,
       summary: false,
@@ -661,7 +702,7 @@
       savePersonalObjects();
       elements.referenceState.textContent = "Ваше созвездие";
       if (!state.deck.includes(editor.itemIndex)) state.deck.push(editor.itemIndex);
-      elements.roundTotal.textContent = objects.filter((object) => !object.personalDraft).length;
+      elements.roundTotal.textContent = objectIndicesForMode("practice").length;
     } else {
       referenceOverrides[item.id] = candidate;
       saveReferenceOverrides();
@@ -680,7 +721,7 @@
   function resetReferenceEditor() {
     const item = objects[editor.itemIndex];
     if (item.personalObject) return editorMessage("Это личное созвездие: для него нет авторской версии.", "error");
-    const original = structuredClone(baseObjects.find((candidate) => candidate.id === item.id));
+    const original = structuredClone(protectedObjects.find((candidate) => candidate.id === item.id));
     delete referenceOverrides[item.id];
     saveReferenceOverrides();
     Object.keys(item).forEach((key) => delete item[key]);
@@ -1581,11 +1622,102 @@
   }
 
   function setModeSelection(mode) {
-    const graded = mode === "graded";
-    elements.practiceModeButton.classList.toggle("is-active", !graded);
-    elements.gradedModeButton.classList.toggle("is-active", graded);
-    elements.practiceModeButton.setAttribute("aria-pressed", String(!graded));
-    elements.gradedModeButton.setAttribute("aria-pressed", String(graded));
+    state.mode = mode;
+    const buttons = [
+      [elements.practiceModeButton, "practice"],
+      [elements.gradedModeButton, "graded"],
+      [elements.quizModeButton, "quiz"],
+    ];
+    buttons.forEach(([button, value]) => {
+      const active = value === mode;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", String(active));
+    });
+    const quiz = mode === "quiz";
+    elements.workspace.hidden = quiz;
+    elements.quizPanel.hidden = !quiz;
+    elements.includeExtrasToggle.checked = Boolean(preferences.includeExtras[mode]);
+    const modeNames = { practice: "Тренировка", graded: "Контрольная", quiz: "Викторина" };
+    elements.scopeModeText.textContent = `Для режима «${modeNames[mode]}» · ещё ${extraBaseObjects.length} созвездий`;
+  }
+
+  function quizPool() {
+    return objectIndicesForMode("quiz", true)
+      .map((index) => objects[index])
+      .filter((item) => item.alpha && item.alphaScientific);
+  }
+
+  function renderQuizQuestion() {
+    const pool = quizPool();
+    if (pool.length < 5) return;
+    const available = pool.filter((item) => item.id !== state.quiz.previousId);
+    const item = shuffle(available.length ? available : pool)[0];
+    const direction = Math.random() < .5 ? "star-to-constellation" : "constellation-to-star";
+    const correct = direction === "star-to-constellation" ? item.name : item.alpha;
+    const distractors = [...new Set(pool
+      .filter((candidate) => candidate.id !== item.id)
+      .map((candidate) => direction === "star-to-constellation" ? candidate.name : candidate.alpha))];
+    const options = shuffle([correct, ...shuffle(distractors).slice(0, 4)]);
+    state.quiz.current = { item, direction, correct, options };
+    state.quiz.previousId = item.id;
+    state.quiz.locked = false;
+    elements.quizProgress.textContent = `Вопрос ${state.quiz.answered + 1}`;
+    elements.quizQuestion.textContent = direction === "star-to-constellation"
+      ? `${item.alpha} — α-звезда какого созвездия?`
+      : `Какая звезда обозначается α в созвездии «${item.name}»?`;
+    elements.quizInstruction.textContent = "Выберите один из пяти вариантов. Ответ проверяется сразу.";
+    elements.quizOptions.replaceChildren();
+    options.forEach((answer, index) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "quiz-option";
+      button.dataset.answer = answer;
+      const number = document.createElement("span");
+      number.textContent = String(index + 1).padStart(2, "0");
+      const label = document.createElement("b");
+      label.textContent = answer;
+      button.append(number, label);
+      button.addEventListener("click", () => answerQuiz(answer, button));
+      elements.quizOptions.append(button);
+    });
+    elements.quizFeedback.hidden = true;
+    elements.quizFeedback.className = "quiz-feedback";
+    elements.quizNextButton.hidden = true;
+  }
+
+  function answerQuiz(answer, selectedButton) {
+    if (state.quiz.locked || !state.quiz.current) return;
+    state.quiz.locked = true;
+    state.quiz.answered += 1;
+    const correct = answer === state.quiz.current.correct;
+    if (correct) state.quiz.score += 1;
+    [...elements.quizOptions.children].forEach((button) => {
+      button.disabled = true;
+      if (button.dataset.answer === state.quiz.current.correct) button.classList.add("is-correct");
+    });
+    if (!correct) selectedButton.classList.add("is-wrong");
+    elements.quizScore.textContent = state.quiz.score;
+    elements.quizAnswered.textContent = state.quiz.answered;
+    elements.quizFeedback.hidden = false;
+    elements.quizFeedback.classList.add(correct ? "is-correct" : "is-wrong");
+    elements.quizFeedbackTitle.textContent = correct ? "Верно" : "Неверно";
+    elements.quizFeedbackText.textContent = `${state.quiz.current.item.alpha} — ${state.quiz.current.item.alphaDesignation}, альфа-звезда созвездия «${state.quiz.current.item.name}».`;
+    elements.quizNextButton.hidden = false;
+    elements.quizNextButton.focus();
+  }
+
+  function enterQuiz() {
+    if (state.test.active) return;
+    setModeSelection("quiz");
+    if (!state.quiz.current || state.quiz.locked) renderQuizQuestion();
+  }
+
+  function resetPracticeDeck() {
+    const pool = objectIndicesForMode("practice");
+    state.deck = shuffle(pool);
+    state.deckPosition = 0;
+    state.sessionMastered.clear();
+    elements.roundTotal.textContent = pool.length;
   }
 
   function syncSkyViewport() {
@@ -1637,10 +1769,7 @@
   }
 
   function startTest() {
-    const candidates = objects
-      .map((item, index) => ({ item, index }))
-      .filter(({ item }) => item.kind === "constellation" && !item.personalObject)
-      .map(({ index }) => index);
+    const candidates = objectIndicesForMode("graded", true);
     state.test.active = true;
     state.test.summary = false;
     state.test.deck = shuffle(candidates).slice(0, TEST_TASK_COUNT);
@@ -1661,6 +1790,7 @@
     elements.testIntroDialog.close();
     elements.testHud.hidden = false;
     setModeSelection("graded");
+    elements.includeExtrasToggle.disabled = true;
     elements.settingsButton.disabled = true;
     elements.guideButton.disabled = true;
     elements.testScore.textContent = "0";
@@ -1710,6 +1840,7 @@
     elements.testHud.classList.remove("is-urgent");
     elements.settingsButton.disabled = false;
     elements.guideButton.disabled = false;
+    elements.includeExtrasToggle.disabled = false;
     document.body.classList.remove("test-active");
     const disqualified = state.test.disqualified;
     elements.resultLabel.textContent = disqualified ? "Нарушение правил" : timedOut ? "Время вышло" : "Тест завершён";
@@ -1775,7 +1906,7 @@
     elements.workspace.inert = false;
     document.body.classList.remove("modal-open");
     setModeSelection("practice");
-    elements.roundTotal.textContent = objects.length;
+    resetPracticeDeck();
     loadNext();
   }
 
@@ -1892,10 +2023,11 @@
       state.item = objects[state.test.deck[state.test.position]];
       state.test.position += 1;
     } else {
-      let available = objects.map((_, index) => index).filter((index) => !state.sessionMastered.has(objects[index].id));
+      const practicePool = objectIndicesForMode("practice");
+      let available = practicePool.filter((index) => !state.sessionMastered.has(objects[index].id));
       if (!available.length) {
         state.sessionMastered.clear();
-        available = [...objects.keys()];
+        available = [...practicePool];
       }
       while (state.deckPosition < state.deck.length && state.sessionMastered.has(objects[state.deck[state.deckPosition]].id)) {
         state.deckPosition += 1;
@@ -1945,7 +2077,7 @@
       elements.sourceLink.textContent = state.item.customReference ? "Ваш личный эталон" : "Защищённый авторский эталон";
     }
     elements.round.textContent = state.test.active ? state.test.position : state.deckPosition;
-    elements.roundTotal.textContent = state.test.active ? TEST_TASK_COUNT : objects.length;
+    elements.roundTotal.textContent = state.test.active ? TEST_TASK_COUNT : objectIndicesForMode("practice").length;
     elements.phaseTwoLabel.textContent = state.item.kind === "asterism" ? "Назовите 3 α-звезды" : "Найдите и назовите α-звезду";
     elements.phases[0].className = "phase is-active";
     elements.phases[1].className = "phase";
@@ -2025,22 +2157,48 @@
   elements.settingsButton.addEventListener("click", openReferenceSettings);
   elements.gradedModeButton.addEventListener("click", () => {
     if (state.test.active) return;
+    setModeSelection("graded");
+    elements.testExtrasToggle.checked = preferences.includeExtras.graded;
     elements.testIntroDialog.showModal();
     elements.testStartButton.focus();
   });
   elements.practiceModeButton.addEventListener("click", () => {
     if (!state.test.active) {
       setModeSelection("practice");
+      if (!state.item || !coreObjectIds.has(state.item.id) && !preferences.includeExtras.practice) {
+        resetPracticeDeck();
+        loadNext();
+      }
       return;
     }
     if (window.confirm("Завершить контрольную досрочно и показать текущий результат?")) finishTest(false);
   });
-  elements.testStartButton.addEventListener("click", startTest);
-  elements.testIntroClose.addEventListener("click", () => elements.testIntroDialog.close());
-  elements.testCancelButton.addEventListener("click", () => elements.testIntroDialog.close());
-  elements.testIntroDialog.addEventListener("click", (event) => {
-    if (event.target === elements.testIntroDialog) elements.testIntroDialog.close();
+  elements.quizModeButton.addEventListener("click", enterQuiz);
+  elements.quizNextButton.addEventListener("click", renderQuizQuestion);
+  elements.includeExtrasToggle.addEventListener("change", () => {
+    preferences.includeExtras[state.mode] = elements.includeExtrasToggle.checked;
+    if (state.mode === "graded") elements.testExtrasToggle.checked = elements.includeExtrasToggle.checked;
+    savePreferences();
+    if (state.mode === "practice") {
+      resetPracticeDeck();
+      loadNext();
+    } else if (state.mode === "quiz") {
+      state.quiz.current = null;
+      renderQuizQuestion();
+    }
   });
+  elements.testExtrasToggle.addEventListener("change", () => {
+    preferences.includeExtras.graded = elements.testExtrasToggle.checked;
+    elements.includeExtrasToggle.checked = elements.testExtrasToggle.checked;
+    savePreferences();
+  });
+  elements.testStartButton.addEventListener("click", startTest);
+  elements.testIntroClose.addEventListener("click", () => { elements.testIntroDialog.close(); setModeSelection("practice"); });
+  elements.testCancelButton.addEventListener("click", () => { elements.testIntroDialog.close(); setModeSelection("practice"); });
+  elements.testIntroDialog.addEventListener("click", (event) => {
+    if (event.target === elements.testIntroDialog) { elements.testIntroDialog.close(); setModeSelection("practice"); }
+  });
+  elements.testIntroDialog.addEventListener("cancel", () => setModeSelection("practice"));
   elements.testIntegrityConfirm.addEventListener("click", () => {
     state.test.integrityNotice = null;
     elements.testIntegrityDialog.close();
@@ -2154,7 +2312,8 @@
   populateCoordinateLists();
   syncSkyViewport();
   elements.demoScoreLabel.textContent = `ЗАЧЁТ ≥ ${preferences.passPercent}%`;
-  elements.roundTotal.textContent = objects.length;
+  setModeSelection("practice");
+  elements.roundTotal.textContent = objectIndicesForMode("practice").length;
   saveStats();
   loadNext();
   offerFirstVisitGuide();
